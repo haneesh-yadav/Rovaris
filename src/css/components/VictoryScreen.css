@@ -1,0 +1,7 @@
+/* ============================================================
+   VICTORYSCREEN — component-specific styles
+   Used only by src/components/VictoryScreen.jsx
+   Currently this component relies on Tailwind utility classes
+   and the shared classes in src/css/shared.css — add any
+   VictoryScreen-only rules here.
+   ============================================================ */

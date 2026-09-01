@@ -1,0 +1,14 @@
+/* ============================================================
+   CINEMATICSTORYLINE — component-specific styles
+   Used only by src/components/CinematicStoryline.jsx
+   Relies on Tailwind utility classes plus the shared "mission
+   light" classes in src/css/shared.css (panel-light, btn-mars-*,
+   mission-light-bg) to match the Main.jsx theme.
+   ============================================================ */
+
+/* Override the shared cyan typewriter cursor with the mars/orange
+   accent, scoped to this component only — other components still
+   using the old dark space theme keep the cyan cursor for now. */
+.cinematic-light .typewriter-cursor {
+  background-color: #C15B34;
+}

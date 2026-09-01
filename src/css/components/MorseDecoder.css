@@ -1,0 +1,17 @@
+/* ============================================================
+   MORSEDECODER — component-specific styles
+   Used only by src/components/MorseDecoder.jsx
+   Currently this component relies on Tailwind utility classes
+   and the shared classes in src/css/shared.css — add any
+   MorseDecoder-only rules here.
+   ============================================================ */
+
+/* Tab bar — icon + label pills that switch between the audio
+   receiver and the reference table panels below. */
+.morse-tabbar {
+  width: fit-content;
+}
+
+.morse-tab {
+  white-space: nowrap;
+}

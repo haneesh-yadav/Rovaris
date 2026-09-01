@@ -1,0 +1,312 @@
+/* ============================================================
+   SHARED — classes used by more than one page or component
+   (space theme, glass panels, buttons, glows, ambient animation)
+   Kept centralized so pages/components don't redefine the same
+   class differently. Imported once via src/index.css.
+   ============================================================ */
+
+/* Ambient Starfield & Space Background */
+.space-bg {
+  background: radial-gradient(ellipse at bottom, #0B1D3A 0%, #030814 60%, #000000 100%);
+  position: relative;
+}
+
+.stars-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.star {
+  position: absolute;
+  background-color: #ffffff;
+  border-radius: 50%;
+  animation: starTwinkle var(--twinkle-duration, 3s) infinite ease-in-out;
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 0.9; transform: scale(1.2); }
+}
+
+@keyframes floatParticle {
+  0% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+  50% { transform: translateY(-30px) translateX(15px); opacity: 0.7; }
+  100% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+}
+
+/* ============================================================
+   MISSION LIGHT THEME — shared panels & surfaces
+   Used by Main, Leaderboard, Admin, and TeamDashboard to keep a
+   single consistent light "mission control" look across pages.
+   ============================================================ */
+.mission-light-bg {
+  background: #DEDEDA;
+  position: relative;
+}
+
+/* Neutral light card — default surface for tables/sections */
+.panel-light {
+  background: #ffffff;
+  border: 1px solid rgba(20, 20, 15, 0.08);
+  box-shadow: 0 4px 20px -6px rgba(20, 20, 15, 0.08);
+}
+
+/* Warm/orange-tinted card — used for active mission status headers */
+.panel-light-warm {
+  background: linear-gradient(180deg, #FFF4EA 0%, #FFEADA 100%);
+  border: 1px solid rgba(255, 122, 26, 0.25);
+  box-shadow: 0 4px 20px -6px rgba(226, 83, 10, 0.12);
+}
+
+/* Gold-tinted card — used for admin/command surfaces */
+.panel-light-gold {
+  background: linear-gradient(180deg, #FFFBEA 0%, #FFF6D6 100%);
+  border: 1px solid rgba(217, 164, 6, 0.3);
+  box-shadow: 0 4px 20px -6px rgba(217, 164, 6, 0.15);
+}
+
+.btn-mars-solid {
+  background: linear-gradient(135deg, #FF7A1A 0%, #E2530A 100%);
+  color: #ffffff;
+  font-family: var(--font-rajdhani);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  box-shadow: 0 10px 22px -8px rgba(226, 83, 10, 0.6);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-mars-solid:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -8px rgba(226, 83, 10, 0.75);
+}
+.btn-mars-solid:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-mars-ghost {
+  background: #DBDBD5;
+  color: #1c1c17;
+  font-family: var(--font-rajdhani);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border: 1px solid rgba(20,20,15,0.06);
+  transition: all 0.2s ease;
+}
+.btn-mars-ghost:hover { background: #cfcfc8; transform: translateY(-2px); }
+
+.btn-mars-dark {
+  background: #16160F;
+  color: #ffffff;
+  font-family: var(--font-rajdhani);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  transition: all 0.2s ease;
+}
+.btn-mars-dark:hover { background: #2a2a20; transform: translateY(-1px); }
+
+/* Glassmorphism Panels */
+.glass-panel {
+  background: rgba(11, 29, 58, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(0, 229, 255, 0.05);
+}
+
+.glass-panel-mars {
+  background: rgba(20, 10, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 87, 34, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(255, 87, 34, 0.08);
+}
+
+.glass-panel-gold {
+  background: rgba(30, 25, 10, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+/* Glowing Neon Text & Accents */
+.text-glow-cyan {
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.7), 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+.text-glow-mars {
+  text-shadow: 0 0 10px rgba(255, 87, 34, 0.8), 0 0 25px rgba(255, 87, 34, 0.4);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 10px rgba(0, 230, 118, 0.8), 0 0 20px rgba(0, 230, 118, 0.4);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.9), 0 0 25px rgba(255, 170, 0, 0.5);
+}
+
+/* Space Buttons */
+.btn-space-primary {
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+  border: 1px solid #90e0ef;
+  color: #ffffff;
+  font-family: var(--font-rajdhani);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px rgba(0, 180, 216, 0.3);
+}
+
+.btn-space-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(0, 180, 216, 0.7);
+  background: linear-gradient(135deg, #00c6eb 0%, #0088cc 100%);
+}
+
+.btn-space-mars {
+  background: linear-gradient(135deg, #ff5722 0%, #d84315 100%);
+  border: 1px solid #ffab91;
+  color: #ffffff;
+  font-family: var(--font-rajdhani);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px rgba(255, 87, 34, 0.35);
+}
+
+.btn-space-mars:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(255, 87, 34, 0.7);
+  background: linear-gradient(135deg, #ff6e40 0%, #e64a19 100%);
+}
+
+.btn-space-cyber {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  font-family: var(--font-rajdhani);
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.btn-space-cyber:hover:not(:disabled) {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: #00e5ff;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+  color: #ffffff;
+}
+
+/* Typewriter blinking cursor */
+.typewriter-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1.2em;
+  background-color: #00e5ff;
+  vertical-align: middle;
+  margin-left: 4px;
+  animation: cursorBlink 0.8s infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* Pulse animation */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(0, 229, 255, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(0, 229, 255, 0.8); }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Spacecraft Cruising Animation */
+@keyframes spacecraftCruise {
+  0% {
+    transform: translate(-120px, 40px) rotate(8deg) scale(0.7);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(50vw, 15px) rotate(4deg) scale(0.9);
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(110vw, -30px) rotate(0deg) scale(0.75);
+    opacity: 0;
+  }
+}
+
+.animate-spacecraft {
+  animation: spacecraftCruise 22s linear infinite;
+}
+
+/* Shooting Star Animation */
+@keyframes shootingStar {
+  0% {
+    transform: translateX(0) translateY(0) rotate(-35deg) scaleX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(-40px) translateY(30px) rotate(-35deg) scaleX(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateX(-280px) translateY(200px) rotate(-35deg) scaleX(1.2);
+  }
+  100% {
+    transform: translateX(-340px) translateY(240px) rotate(-35deg) scaleX(0);
+    opacity: 0;
+  }
+}
+
+.shooting-star-1 {
+  animation: shootingStar 7s infinite 2s ease-in;
+}
+
+.shooting-star-2 {
+  animation: shootingStar 11s infinite 6s ease-in;
+}
+
+/* Rover Wheels & Radar */
+@keyframes wheelRoll {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-wheel {
+  animation: wheelRoll 3s linear infinite;
+}
+
+@keyframes laserSweep {
+  0%, 100% { transform: rotate(-25deg); opacity: 0.3; }
+  50% { transform: rotate(25deg); opacity: 0.9; }
+}
+
+.animate-radar-sweep {
+  transform-origin: bottom center;
+  animation: laserSweep 3s ease-in-out infinite;
+}
+
+@keyframes roverSuspension {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-suspension {
+  animation: roverSuspension 1.5s ease-in-out infinite;
+}

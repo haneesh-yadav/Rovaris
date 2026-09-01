@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Global styles now live in the css/ folder: base.css for root
+   variables & typography defaults, shared.css for classes reused
+   across multiple pages/components. Each page/component imports
+   its own stylesheet directly (see src/css/pages/ and
+   src/css/components/). */
+@import "./css/base.css";
+@import "./css/shared.css";

@@ -1,0 +1,7 @@
+/* ============================================================
+   HEADER — component-specific styles
+   Used only by src/components/Header.jsx
+   Currently this component relies on Tailwind utility classes
+   and the shared classes in src/css/shared.css — add any
+   Header-only rules here.
+   ============================================================ */

@@ -1,0 +1,7 @@
+/* ============================================================
+   ADMIN PAGE — page-specific styles
+   Used only by src/pages/Admin.jsx
+   Currently this page relies on Tailwind utility classes and
+   the shared classes in src/css/shared.css — add any
+   Admin-only rules here.
+   ============================================================ */

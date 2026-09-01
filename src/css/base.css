@@ -1,0 +1,54 @@
+/* ============================================================
+   BASE — root variables, typography defaults, global elements
+   Applies to the whole app (imported once via src/index.css)
+   ============================================================ */
+@layer base {
+  :root {
+    /* Project-wide typeface: Poppins. Mono is kept only for tabular timer/telemetry digits. */
+    --font-poppins: 'Poppins', sans-serif;
+    --font-orbitron: 'Poppins', sans-serif;
+    --font-rajdhani: 'Poppins', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-sans: 'Poppins', sans-serif;
+  }
+
+  body {
+    background-color: #DEDEDA;
+    color: #e2e8f0;
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-orbitron {
+    font-family: var(--font-orbitron);
+  }
+
+  .font-rajdhani {
+    font-family: var(--font-rajdhani);
+  }
+
+  .font-mono, .timer-text {
+    font-family: var(--font-mono);
+  }
+
+  .material-icons,
+  .material-symbols-outlined {
+    vertical-align: middle;
+    line-height: 1;
+    user-select: none;
+  }
+}
+
+/* Hide the vertical scrollbar everywhere while keeping scroll functionality */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
