@@ -1,10 +1,51 @@
 import React, { useEffect, useState } from 'react';
 import { useSocket } from '../context/SocketContext';
-import { Trophy, Radio, Sparkles, Lock } from 'lucide-react';
+import { Trophy, Radio, Crown, Lock, Wifi, WifiOff, Gamepad2 } from 'lucide-react';
 import VictoryScreen from '../components/VictoryScreen';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import '../css/pages/Leaderboard.css';
 
+
+// Deterministic warm-palette avatar color per squadron, so the same team
+// always renders the same accent instead of colors reshuffling on refresh.
+const AVATAR_PALETTE = [
+  ['#E2530A', '#A83E14'],
+  ['#D98A3D', '#8C5321'],
+  ['#C1653A', '#7A3A1D'],
+  ['#E08A4B', '#9B5321'],
+  ['#B85C2E', '#6E361A'],
+];
+const avatarColors = (name = '') => {
+  const idx = Math.abs([...name].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % AVATAR_PALETTE.length;
+  return AVATAR_PALETTE[idx];
+};
+const initials = (name = '') =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase() || '?';
+
+const Avatar = ({ name, size = 'w-12 h-12 text-base' }) => {
+  const [from, to] = avatarColors(name);
+  return (
+    <div
+      className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.25)]`}
+      style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+    >
+      {initials(name)}
+    </div>
+  );
+};
+
+const PODIUM_STEPS = [
+  { rank: 2, height: 'h-24', block: 'from-[#4a4840] to-[#38362f]', number: 'text-white/70' },
+  { rank: 1, height: 'h-32', block: 'from-[#E2530A] to-[#A83E14]', number: 'text-white' },
+  { rank: 3, height: 'h-[4.5rem]', block: 'from-[#3a3830] to-[#2a2820]', number: 'text-white/60' },
+];
 export default function Leaderboard() {
   const { socket, gameSession } = useSocket();
   const [leaderboard, setLeaderboard] = useState([]);
@@ -28,115 +69,137 @@ export default function Leaderboard() {
   // If game is in victory phase, render the full 3D podium view
   if (gameSession.phase === 'victory') {
     return (
-      <div className="min-h-screen w-full mission-light-bg text-[#14140F] px-4 pt-20 pb-8 select-none">
+      <div className="relative min-h-screen w-full flex flex-col items-center mission-light-bg text-[#14140F] px-4 pt-24 pb-10 select-none font-sans">
         <Header />
-        <VictoryScreen leaderboard={leaderboard} />
+        <main className="relative z-10 w-full flex-1">
+          <VictoryScreen leaderboard={leaderboard} />
+        </main>
+        <div className="relative -mx-4 -mb-10 w-[calc(100%+2rem)]">
+          <Footer />
+        </div>
       </div>
     );
   }
 
+  const top3 = [leaderboard[1], leaderboard[0], leaderboard[2]]; // silver, gold, bronze order
+
   return (
-    <div className="min-h-screen w-full mission-light-bg text-[#14140F] px-4 pt-20 pb-8 select-none overflow-x-hidden font-sans">
+    <div className="relative min-h-screen w-full flex flex-col items-center mission-light-bg text-[#14140F] px-4 pt-24 pb-10 font-sans">
       <Header />
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Page intro */}
-        <header className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 font-mono text-xs font-bold tracking-widest uppercase">
-            <Radio className="w-4 h-4 text-orange-500" />
-            <span>LIVE MISSION LEADERBOARD • MARS SECTOR 7</span>
+      <main className="relative z-10 w-full max-w-3xl mx-auto flex-1 py-4 space-y-8">
+        {/* Page intro — same compact icon + label pattern as the Briefing page */}
+        <div className="w-full animate-in fade-in zoom-in-95 duration-300 text-center max-w-2xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 text-[#9a9a90]">
+            <Radio className="w-5 h-5" />
+            <span className="font-rajdhani font-black tracking-tight text-xl sm:text-2xl">
+              SQUADRON RANKINGS
+            </span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black font-rajdhani text-[#14140F] tracking-tight">
-            ROVARIS SQUADRON <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500">RANKINGS</span>
-          </h1>
-          <p className="text-sm font-rajdhani text-[#4a4a44]">
+          <p className="text-sm text-[#4a4a44] leading-relaxed">
             Real-time score accumulation across Rover Navigation, Power Stabilization, and Signal Recovery.
           </p>
-        </header>
+        </div>
 
-        {/* Live Scoreboard Table */}
-        <div className="panel-light rounded-2xl p-6 border-black/10 space-y-4">
-          <div className="flex items-center justify-between border-b border-black/10 pb-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-600" />
-              <h2 className="text-base font-bold font-orbitron text-[#14140F]">
-                ACTIVE SQUADRON STANDINGS
-              </h2>
-            </div>
-            <div className="text-xs font-mono text-orange-500">
-              STATUS: REAL-TIME SYNCHRONIZED
-            </div>
+        {leaderboard.length === 0 ? (
+          <div className="rounded-2xl bg-[#302f27] border border-white/10 p-10 text-center text-white/40 text-sm">
+            Standby for squadron telemetry stream...
           </div>
+        ) : (
+          <div className="rounded-2xl bg-[#302f27] border border-white/10 overflow-hidden">
+            {/* Podium */}
+            {leaderboard.length >= 2 && (
+              <div className="relative pt-10 pb-0 px-6 overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(226,83,10,0.12),transparent_65%)] pointer-events-none" />
+                <div className="relative flex items-end justify-center gap-3 sm:gap-6">
+                  {PODIUM_STEPS.map((step) => {
+                    const t = step.rank === 1 ? top3[1] : step.rank === 2 ? top3[0] : top3[2];
+                    if (!t) return <div key={step.rank} className="w-24 sm:w-32" />;
+                    return (
+                      <div key={step.rank} className="flex flex-col items-center w-24 sm:w-32">
+                        {step.rank === 1 && (
+                          <Crown className="w-6 h-6 text-amber-400 mb-1.5 fill-amber-400" />
+                        )}
+                        <Avatar
+                          name={t.name}
+                          size={step.rank === 1 ? 'w-16 h-16 text-lg ring-4 ring-amber-400/60' : 'w-12 h-12 text-base'}
+                        />
+                        <div className="mt-2.5 text-center">
+                          <div className="text-sm font-bold text-white truncate max-w-[6.5rem] sm:max-w-[7.5rem]">
+                            {t.name}
+                          </div>
+                          <div className="mt-1 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/25 border border-white/10 text-[10px] font-bold text-amber-300/90 tracking-wide">
+                            <Lock className="w-2.5 h-2.5" /> LOCKED
+                          </div>
+                        </div>
+                        <div
+                          className={`mt-4 w-full ${step.height} rounded-t-xl bg-gradient-to-b ${step.block} flex items-start justify-center pt-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
+                        >
+                          <span className={`text-3xl font-black ${step.number}`}>{step.rank}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm font-mono">
-              <thead>
-                <tr className="border-b border-black/10 text-xs text-[#6b6b64] uppercase">
-                  <th className="py-3 px-3">RANK</th>
-                  <th className="py-3 px-3">SQUADRON NAME</th>
-                  <th className="py-3 px-3 text-center">ROUND 1</th>
-                  <th className="py-3 px-3 text-center">ROUND 2</th>
-                  <th className="py-3 px-3 text-center">ROUND 3</th>
-                  <th className="py-3 px-3 text-right">TOTAL PTS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboard.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-[#8a8a82]">
-                      Standby for squadron telemetry stream...
-                    </td>
-                  </tr>
-                ) : (
-                  leaderboard.map((team, idx) => (
-                    <tr
-                      key={team.id || idx}
-                      className={`border-b border-black/10 hover:bg-black/[0.04] transition-colors ${
-                        idx === 0 ? 'bg-amber-500/10' : idx === 1 ? 'bg-slate-500/5' : idx === 2 ? 'bg-amber-900/10' : ''
+            {/* Full standings list */}
+            <div className="border-t border-white/10 mt-6">
+              <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                  <h2 className="font-rajdhani font-bold text-sm text-white tracking-tight">SQUADRON STANDINGS</h2>
+                </div>
+                <span className="text-[10px] font-bold text-orange-400/80 tracking-widest uppercase">
+                  Real-Time Synchronized
+                </span>
+              </div>
+
+              <div className="divide-y divide-white/[0.06]">
+                {leaderboard.map((team, idx) => (
+                  <div
+                    key={team.id || idx}
+                    className={`flex items-center gap-4 px-6 py-3.5 transition-colors hover:bg-white/[0.03] ${
+                      idx === 0 ? 'bg-[#E2530A]/[0.06]' : ''
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 ${
+                        idx === 0
+                          ? 'bg-amber-400 text-black'
+                          : idx === 1
+                          ? 'bg-white/25 text-white'
+                          : idx === 2
+                          ? 'bg-amber-800 text-white'
+                          : 'bg-white/[0.06] text-white/50'
                       }`}
                     >
-                      <td className="py-3.5 px-3">
-                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-bold font-orbitron text-xs ${
-                          idx === 0
-                            ? 'bg-amber-400 text-black shadow-[0_2px_8px_rgba(245,158,11,0.4)]'
-                            : idx === 1
-                            ? 'bg-slate-300 text-black'
-                            : idx === 2
-                            ? 'bg-amber-700 text-white'
-                            : 'bg-black/[0.05] text-[#4a4a44]'
-                        }`}>
-                          {idx + 1}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 font-bold font-rajdhani text-base text-[#14140F]">
-                        {team.name}
-                      </td>
-                      <td className="py-3.5 px-3 text-center text-[#6b6b64] font-mono text-xs">
-                        <span className="inline-flex items-center gap-1 text-amber-600/80">
-                          <Lock className="w-3 h-3" /> LOCKED
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-center text-[#6b6b64] font-mono text-xs">
-                        <span className="inline-flex items-center gap-1 text-amber-600/80">
-                          <Lock className="w-3 h-3" /> LOCKED
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-center text-[#6b6b64] font-mono text-xs">
-                        <span className="inline-flex items-center gap-1 text-amber-600/80">
-                          <Lock className="w-3 h-3" /> LOCKED
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-right font-bold text-xs font-orbitron text-orange-600">
-                        <span className="inline-flex items-center gap-1 text-orange-500/80">
-                          <Lock className="w-3 h-3 text-amber-600" /> REVEAL AT END
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      {idx + 1}
+                    </span>
+
+                    <Avatar name={team.name} size="w-10 h-10 text-sm" />
+
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-white truncate">{team.name}</div>
+                      <div className={`flex items-center gap-1 text-[11px] ${team.connected ? 'text-emerald-400' : 'text-white/30'}`}>
+                        {team.connected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                        {team.connected ? 'Online' : 'Offline'}
+                      </div>
+                    </div>
+
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/25 border border-white/10 text-xs font-bold text-amber-300/90 shrink-0">
+                      <Lock className="w-3 h-3" /> LOCKED
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+      </main>
+
+      <div className="relative -mx-4 -mb-10 w-[calc(100%+2rem)]">
+        <Footer />
       </div>
     </div>
   );

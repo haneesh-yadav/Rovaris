@@ -266,6 +266,17 @@ const FOOTER_CSS = `
     caret-color: #14140F;
   }
 
+  .mp-contact-static {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .mp-contact-static-label {
+    color: rgba(20,20,15,0.45);
+  }
+  .mp-contact-static-value {
+    color: #14140F;
+    font-weight: 600;
+  }
+
   .mp-contact-chat-wrap { position: relative; display: flex; align-items: center; width: 100%; }
   .mp-contact-chat-input {
     flex: 1;
@@ -457,110 +468,22 @@ const MI = ({ name, style }) => (
 /**
  * ContactForm
  *
- * Contact Us form: email, name, and message shown together, all required.
- * Submitting the message (via the send button) submits the whole form.
+ * Contact Us panel: displays fixed contact details (name + phone number)
+ * in the same box styling the form used, instead of a submittable form.
  */
 function ContactForm() {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!email || !name || !message.trim()) return;
-    setError('');
-    setSending(true);
-
-    // ── EmailJS Integration ──────────────────────────────────────────
-    // 1. Sign up at https://emailjs.com (free)
-    // 2. Add an email service (Gmail etc.) → copy the Service ID below.
-    //    Connect whichever inbox you want submissions to land in, e.g.
-    //    astronomy@vit.ac.in.
-    // 3. Create a template with variables {{from_name}}, {{from_email}},
-    //    {{message}} — this is what the email you receive will look like.
-    //    In the template settings, set "Reply To" to {{from_email}} so
-    //    hitting reply in your inbox goes straight back to the sender.
-    // 4. Account → General → copy your Public Key below.
-    // ────────────────────────────────────────────────────────────────
-    const SERVICE_ID  = 'service_pdnr3tn';
-    const TEMPLATE_ID = 'template_jf7slh5';
-    const PUBLIC_KEY  = 'DxfBe3RIl0GYV231B';
-
-    try {
-      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: SERVICE_ID,
-          template_id: TEMPLATE_ID,
-          user_id: PUBLIC_KEY,
-          template_params: {
-            from_name: name,
-            from_email: email,
-            message,
-          },
-        }),
-      });
-      if (response.ok) {
-        setSubmitted(true);
-      } else {
-        setError('Could not send your message. Please try again.');
-      }
-    } catch {
-      setError('Could not send your message. Please try again.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <div className="mp-contact-success">
-        <MI name="check_circle" style={{ fontSize: '20px', color: '#2EC4A0' }} />
-        <span>Thanks{name ? `, ${name}` : ''} — we'll get back to you soon.</span>
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="mp-contact-form">
-      {error && <div className="mp-contact-error">{error}</div>}
-
-      <input
-        type="text"
-        required
-        className="mp-contact-input"
-        placeholder="Enter your Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-
-      <input
-        type="email"
-        required
-        className="mp-contact-input"
-        placeholder="Enter your Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <div className="mp-contact-chat-wrap">
-        <input
-          type="text"
-          required
-          className="mp-contact-chat-input"
-          placeholder="Share your thoughts with us!"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-        <button type="submit" className="mp-contact-chat-send" disabled={sending} title="Send">
-          <MI name="arrow_upward" style={{ fontSize: '18px' }} />
-        </button>
+    <div className="mp-contact-form">
+      <div className="mp-contact-input mp-contact-static">
+        <span className="mp-contact-static-label">POC Name</span>
+        <span className="mp-contact-static-value">Haneesh Yadav</span>
       </div>
-    </form>
+
+      <div className="mp-contact-input mp-contact-static">
+        <span className="mp-contact-static-label">Contact Number</span>
+        <span className="mp-contact-static-value">9103355700</span>
+      </div>
+    </div>
   );
 }
 
@@ -785,7 +708,7 @@ export default function Footer() {
             {/* Watermark — inside the bordered box at the bottom */}
             <div className="mp-footer-bg">
               <img
-                src="/assets/logo.webp"
+                src="../assets/stellar-logo.webp"
                 className="mp-footer-wm-logo"
                 alt=""
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}

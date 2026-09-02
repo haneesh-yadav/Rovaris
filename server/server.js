@@ -7,6 +7,14 @@ const round1 = require('./round1');
 const round2 = require('./round2');
 const round3 = require('./round3');
 const admin = require('./admin');
+const ALLOWED_TEAMS = require('./allowedTeams');
+
+// Lookup map from a normalized (trimmed + lowercased) name to the
+// canonical, correctly-cased name from allowedTeams.js — so however
+// a team types their name, it gets stored/displayed consistently.
+const ALLOWED_TEAMS_MAP = new Map(
+  ALLOWED_TEAMS.map((name) => [name.trim().toLowerCase(), name.trim()])
+);
 
 const app = express();
 app.use(cors());
@@ -68,19 +76,27 @@ io.on('connection', (socket) => {
         return callback({ success: false, error: 'Team name cannot be empty.' });
       }
 
+      // Gate login to the pre-approved roster only. Match is trimmed +
+      // case-insensitive, but the canonical (correctly-cased) name from
+      // allowedTeams.js is what actually gets used/stored below.
+      const canonicalName = ALLOWED_TEAMS_MAP.get(cleanName.toLowerCase());
+      if (!canonicalName) {
+        return callback({ success: false, error: 'Team name not recognized. Please check with Mission Control.' });
+      }
+
       const cleanMembers = Array.isArray(members)
         ? members.map((m) => String(m || '').trim()).filter(Boolean).slice(0, 10)
         : [];
 
-      // Consistent ID generated from lowercased team name
-      const teamId = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      // Consistent ID generated from the canonical team name
+      const teamId = canonicalName.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
       let team = db.prepare('SELECT * FROM teams WHERE id = ?').get(teamId);
       if (!team) {
         db.prepare('INSERT INTO teams (id, name, connected, socket_id, members) VALUES (?, ?, 1, ?, ?)')
-          .run(teamId, cleanName, socket.id, JSON.stringify(cleanMembers));
+          .run(teamId, canonicalName, socket.id, JSON.stringify(cleanMembers));
         db.prepare('INSERT INTO scores (team_id) VALUES (?)').run(teamId);
-        team = { id: teamId, name: cleanName, connected: 1, members: JSON.stringify(cleanMembers) };
+        team = { id: teamId, name: canonicalName, connected: 1, members: JSON.stringify(cleanMembers) };
       } else {
         // Only overwrite the stored roster if this login actually supplied member names,
         // so re-logging in with a blank field doesn't wipe an existing roster.

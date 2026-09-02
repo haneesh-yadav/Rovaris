@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import {
-  TrendingUp, Globe, ArrowUp
+  TrendingUp, Globe, ArrowUp, AlertCircle
 } from 'lucide-react';
 import CinematicStoryline from '../components/CinematicStoryline';
 import DinoRunner from '../components/DinoRunner';
@@ -41,10 +41,10 @@ const Icon = ({ name, className = '' }) => (
 );
 
 const ICON_NAV_ITEMS = [
-  { label: 'Instagram', href: 'https://instagram.com', icon: <InstagramIcon /> },
-  { label: 'WhatsApp', href: 'https://wa.me/', icon: <WhatsAppIcon /> },
-  { label: 'LinkedIn', href: 'https://linkedin.com', icon: <LinkedinIcon /> },
-  { label: 'Website', href: 'https://rovaris.example.com', icon: <Globe className="w-4.5 h-4.5" /> },
+  { label: 'Instagram', href: 'https://www.instagram.com/vit_stellar', icon: <InstagramIcon /> },
+  { label: 'WhatsApp', href: 'https://www.whatsapp.com/channel/0029VbDDEqe3GJP5VpaGoA0h', icon: <WhatsAppIcon /> },
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/company/vit-stellar', icon: <LinkedinIcon /> },
+  { label: 'Website', href: 'https://vitstellar.vercel.app', icon: <Globe className="w-4.5 h-4.5" /> },
 ];
 
 const LOBBY_TABS = [
@@ -55,7 +55,6 @@ const LOBBY_TABS = [
 export default function Main() {
   const { team, login, connected, gameSession, lobbyTeams } = useSocket();
   const [teamName, setTeamName] = useState('');
-  const [membersInput, setMembersInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCinematic, setShowCinematic] = useState(false);
@@ -84,13 +83,8 @@ export default function Main() {
       return;
     }
 
-    const members = membersInput
-      .split(',')
-      .map((m) => m.trim())
-      .filter(Boolean);
-
     setLoading(true);
-    login(clean, members, (res) => {
+    login(clean, (res) => {
       setLoading(false);
       if (!res || !res.success) {
         setError(res?.error || 'Failed to authenticate team.');
@@ -112,6 +106,7 @@ export default function Main() {
       {showCinematic && (
         <CinematicStoryline
           type="intro"
+          teamName={team?.name}
           onComplete={handleCinematicComplete}
           isAdmin={false}
         />
@@ -143,14 +138,14 @@ export default function Main() {
                   <div className="text-left">TERRAIN</div>
                 </h1>
 
-                <div className="mt-10 space-y-2">
+                <div className="mt-10 relative">
                   <div className="flex items-center justify-between gap-3 bg-[#dcdcd6] border border-black/10 rounded-full pl-6 pr-2 py-2">
                     <input
                       type="text"
                       value={teamName}
                       onChange={(e) => setTeamName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e); }}
-                      placeholder="Squadron name — e.g. Apollo Pioneers"
+                      placeholder="Enter your Team Name"
                       maxLength={30}
                       autoFocus
                       className="flex-1 min-w-0 bg-transparent text-sm text-[#4a4a44] placeholder-[#8a8a82] focus:outline-none"
@@ -166,19 +161,10 @@ export default function Main() {
                     </button>
                   </div>
 
-                  <input
-                    type="text"
-                    value={membersInput}
-                    onChange={(e) => setMembersInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e); }}
-                    placeholder="Crew members — comma separated (optional)"
-                    maxLength={200}
-                    className="w-full bg-[#dcdcd6] border border-black/10 rounded-full px-6 py-2.5 text-sm text-[#4a4a44] placeholder-[#8a8a82] focus:outline-none"
-                  />
-
                   {error && (
-                    <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2.5 font-mono">
-                      {error}
+                    <div className="absolute top-full left-0 right-0 mt-2 flex items-center gap-2 bg-[#f7dcd3] border border-[#C15B34]/30 rounded-full px-5 py-2.5 z-20 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <AlertCircle className="w-4 h-4 text-[#C15B34] shrink-0" />
+                      <span className="text-sm text-[#8a3a1f]">{error}</span>
                     </div>
                   )}
                 </div>
@@ -239,8 +225,6 @@ export default function Main() {
                 />
               </div>
             </div>
-
-            <div id="briefing" />
           </div>
         ) : (
           /* ======================================================

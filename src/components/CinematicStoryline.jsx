@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Radio } from 'lucide-react';
 import Header from './Header';
+import Footer from './Footer';
 import '../css/components/CinematicStoryline.css';
 
 export const STORYLINES = {
@@ -211,7 +212,7 @@ export default function CinematicStoryline({ type = 'intro', onComplete, isAdmin
 
   return (
     <div
-      className="cinematic-light fixed inset-0 z-50 flex flex-col items-center mission-light-bg px-6 pb-10 select-none overflow-hidden font-sans"
+      className="cinematic-light relative min-h-screen w-full z-50 flex flex-col items-center mission-light-bg px-6 pb-10 select-none overflow-hidden font-sans"
       style={{ paddingTop: headerHeight }}
     >
       {/* Same fixed round-nav / team-name header used across the rest of the mission */}
@@ -225,16 +226,14 @@ export default function CinematicStoryline({ type = 'intro', onComplete, isAdmin
       {/* Ambient warm glow, consistent with the mission-light theme */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-100/40 via-transparent to-transparent pointer-events-none" />
 
-      {/* Remaining space below the header: an invisible spacer above and below
-          this block keep the box vertically centered in the screen, while the
-          connector line (the top spacer) is rendered visibly so it touches
-          both the header pill above and the box below. */}
+      {/* Remaining space below the header: invisible spacers above and below
+          this block keep the box vertically centered in the screen. */}
       <div
         className={`relative z-10 w-full flex-1 min-h-0 flex flex-col items-center transition-opacity duration-500 ${
           transitioning ? 'opacity-0' : 'opacity-100'
         }`}
       >
-        <span className="w-px bg-black/15 shrink-0" style={{ flexGrow: 0.5, flexBasis: 0, minHeight: 40 }} />
+        <span className="w-px shrink-0" style={{ flexGrow: 0.5, flexBasis: 0, minHeight: 40 }} />
 
         <div className="w-full max-w-3xl mx-auto flex flex-col items-center shrink-0">
           {/* Storyline box — dark console theme, text sized to match the header pill */}
@@ -244,9 +243,6 @@ export default function CinematicStoryline({ type = 'intro', onComplete, isAdmin
             }`}
           >
             <div className="text-center space-y-2 border-b border-white/10 pb-5">
-              <div className="text-xs text-white/40 tracking-widest uppercase">
-                {storyline.index} — {storyline.subtitle}
-              </div>
               <h1 className="text-base font-semibold text-white">
                 {storyline.title}
               </h1>
@@ -331,6 +327,10 @@ export default function CinematicStoryline({ type = 'intro', onComplete, isAdmin
         </div>
 
         <span aria-hidden="true" className="shrink-0" style={{ flexGrow: 1.5, flexBasis: 0 }} />
+      </div>
+
+      <div className="relative -mx-6 -mb-10 mt-8 w-[calc(100%+3rem)] shrink-0 z-20">
+        <Footer />
       </div>
     </div>
   );

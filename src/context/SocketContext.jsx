@@ -17,9 +17,12 @@ export const SocketProvider = ({ children }) => {
   const [lobbyTeams, setLobbyTeams] = useState([]);
 
   useEffect(() => {
-    // Determine backend URL robustly across localhost, 127.0.0.1, and LAN IP
+    // In production (frontend on Vercel, backend hosted separately), point
+    // at the deployed backend via VITE_SERVER_URL. Locally, fall back to
+    // the dynamic host:3001 guess so LAN/localhost dev keeps working
+    // without any .env file needed.
     const host = window.location.hostname || 'localhost';
-    const serverUrl = `http://${host}:3001`;
+    const serverUrl = import.meta.env.VITE_SERVER_URL || `http://${host}:3001`;
 
     console.log(`[ROVARIS Socket] Connecting to backend at ${serverUrl}...`);
 

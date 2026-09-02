@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Clock, Info, AlertTriangle, X } from 'lucide-react';
+import { Clock, Info, AlertTriangle, X, Gamepad2 } from 'lucide-react';
+import gravitasLogo from '../assets/gravitas26.svg';
+import stellarLogo from '../assets/stellar-logo.webp';
+import vaayusastraLogo from '../assets/vaayusastra-logo.png';
 import '../css/components/Header.css';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Home' },
-  { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/admin', label: 'Mission Admin' },
+  { to: '/dino', label: 'Dino Game' },
 ];
 
 /**
@@ -16,6 +19,12 @@ const NAV_ITEMS = [
  *    the current round, with a small connected pill dropping below it that displays the
  *    live round timer (timeRemaining) — same font/weight as the nav itself.
  *
+ * navItems (optional, default mode only): overrides the default Home/Leaderboard/Mission Admin
+ * set of pills, e.g. a page that only wants Home + Leaderboard shown/highlighted.
+ * showBriefing (optional, default mode only): set false to hide the trailing "Briefing" link.
+ * When shown, it routes to the /briefing page (highlighted active the same way as the other
+ * nav items) rather than scrolling to an in-page anchor.
+ *
  * instructions (optional, round mode only): { title, items: [{ label, text }] }.
  * Renders a "Round Instructions" pill next to the round pill; clicking it drops down a
  * panel listing the items, styled to match the header (dark pill, same font).
@@ -23,8 +32,19 @@ const NAV_ITEMS = [
  * teamName (optional): renders a "Team <name>" badge on the right side of the header
  * row, level with the nav pill, in the same dark pill styling as the round pill, with
  * the name in the mars/orange accent color.
+ *
+ * actionButton (optional): { label, to, icon: LucideIcon } — renders a filled accent-color
+ * pill button in the top-right corner of the header, linking to the given route.
  */
-export default function Header({ roundLabel, timeRemaining, instructions, teamName }) {
+export default function Header({
+  roundLabel,
+  timeRemaining,
+  instructions,
+  teamName,
+  navItems = NAV_ITEMS,
+  showBriefing = true,
+  actionButton,
+}) {
   const location = useLocation();
   const isRoundMode = Boolean(roundLabel);
   const hasRoster = Boolean(teamName);
@@ -45,6 +65,13 @@ export default function Header({ roundLabel, timeRemaining, instructions, teamNa
   return (
     <header className="fixed top-0 left-0 z-50 w-full flex flex-col items-center pt-2 pb-3 px-2">
       <div className="relative w-full flex justify-center">
+        {/* Partner logos — fixed top-left on every page, plain (no background bar) */}
+        <div className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2 sm:gap-3.5">
+          <img src={gravitasLogo} alt="Gravitas 26" className="h-8 sm:h-11 w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
+          <img src={stellarLogo} alt="VIT Stellar" className="h-8 sm:h-11 w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
+          <img src={vaayusastraLogo} alt="Vaayusastra Aerospace" className="h-11 sm:h-16 w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
+        </div>
+
         <nav className="flex items-center gap-1 bg-gradient-to-b from-[#b9b9b4] to-[#a3a39d] border border-black/10 rounded-full p-1 shadow-[inset_0_1px_2px_rgba(255,255,255,0.3),0_4px_14px_rgba(0,0,0,0.12)]">
           {isRoundMode ? (
             <span className="px-5 py-2 rounded-full text-sm font-semibold bg-[#302f27] text-white shadow-sm">
@@ -52,7 +79,7 @@ export default function Header({ roundLabel, timeRemaining, instructions, teamNa
             </span>
           ) : (
             <>
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const isActive = location.pathname === item.to;
                 return (
                   <Link
@@ -68,12 +95,18 @@ export default function Header({ roundLabel, timeRemaining, instructions, teamNa
                   </Link>
                 );
               })}
-              <a
-                href="#briefing"
-                className="px-5 py-2 rounded-full text-sm font-medium text-[#f3f3f0] hover:text-white transition-colors"
-              >
-                Briefing
-              </a>
+              {showBriefing && (
+                <Link
+                  to="/briefing"
+                  className={`px-5 py-2 rounded-full text-sm transition-colors ${
+                    location.pathname === '/briefing'
+                      ? 'bg-[#302f27] text-white font-semibold shadow-sm'
+                      : 'text-[#f3f3f0] font-medium hover:text-white'
+                  }`}
+                >
+                  Briefing
+                </Link>
+              )}
             </>
           )}
         </nav>
@@ -126,6 +159,17 @@ export default function Header({ roundLabel, timeRemaining, instructions, teamNa
           <div className="absolute right-3 top-1/2 -translate-y-1/2 px-5 py-2 rounded-full bg-[#302f27] shadow-[0_4px_14px_rgba(0,0,0,0.18)]">
             <span className="text-sm font-semibold text-[#E2530A]">Team {teamName}</span>
           </div>
+        )}
+
+        {/* Action button — right side of the header row, filled accent pill (e.g. "Dino Game") */}
+        {actionButton && !hasRoster && (
+          <Link
+            to={actionButton.to}
+            className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pl-4 pr-5 py-2 rounded-full bg-[#E2530A] text-white text-sm font-semibold shadow-[0_4px_14px_rgba(226,83,10,0.35)] hover:bg-[#c8480a] transition-colors"
+          >
+            {actionButton.icon ? <actionButton.icon className="w-4 h-4" /> : <Gamepad2 className="w-4 h-4" />}
+            {actionButton.label}
+          </Link>
         )}
       </div>
 
