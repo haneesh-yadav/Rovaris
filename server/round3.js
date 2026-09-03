@@ -19,56 +19,56 @@ function encodeToMorse(words) {
   ).join(' / ');
 }
 
-function getOrInitRound3State(teamId) {
-  let row = db.prepare('SELECT * FROM round3_state WHERE team_id = ?').get(teamId);
+async function getOrInitRound3State(teamId) {
+  let row = await db.prepare('SELECT * FROM round3_state WHERE team_id = ?').get(teamId);
 
   if (!row) {
-    const team = db.prepare('SELECT id FROM teams WHERE id = ?').get(teamId);
+    const team = await db.prepare('SELECT id FROM teams WHERE id = ?').get(teamId);
     if (!team) {
-      db.prepare('INSERT OR IGNORE INTO teams (id, name) VALUES (?, ?)').run(teamId, `Team ${teamId}`);
-      db.prepare('INSERT OR IGNORE INTO scores (team_id) VALUES (?)').run(teamId);
+      await db.prepare('INSERT INTO teams (id, name) VALUES (?, ?) ON CONFLICT (id) DO NOTHING').run(teamId, `Team ${teamId}`);
+      await db.prepare('INSERT INTO scores (team_id) VALUES (?) ON CONFLICT (team_id) DO NOTHING').run(teamId);
     }
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO round3_state (
         team_id, playbacks_remaining, submission, completed, score, start_time
       ) VALUES (?, 0, NULL, 0, 0, NULL)
     `).run(teamId);
 
-    row = db.prepare('SELECT * FROM round3_state WHERE team_id = ?').get(teamId);
+    row = await db.prepare('SELECT * FROM round3_state WHERE team_id = ?').get(teamId);
   }
 
   return row;
 }
 
-function startRound3ForTeam(teamId, startTime = Date.now()) {
-  getOrInitRound3State(teamId);
-  db.prepare('UPDATE round3_state SET start_time = ? WHERE team_id = ?').run(startTime, teamId);
+async function startRound3ForTeam(teamId, startTime = Date.now()) {
+  await getOrInitRound3State(teamId);
+  await db.prepare('UPDATE round3_state SET start_time = ? WHERE team_id = ?').run(startTime, teamId);
 }
 
-function playAudio(teamId) {
-  const state = getOrInitRound3State(teamId);
+async function playAudio(teamId) {
+  const state = await getOrInitRound3State(teamId);
 
   if (state.completed) {
-    return { success: false, error: 'Transmission challenge already completed.', state: getClientState(teamId) };
+    return { success: false, error: 'Transmission challenge already completed.', state: await getClientState(teamId) };
   }
 
   // Increment playback count (stored in playbacks_remaining column as times played)
   const timesPlayed = (state.playbacks_remaining || 0) + 1;
-  db.prepare('UPDATE round3_state SET playbacks_remaining = ? WHERE team_id = ?').run(timesPlayed, teamId);
+  await db.prepare('UPDATE round3_state SET playbacks_remaining = ? WHERE team_id = ?').run(timesPlayed, teamId);
 
   return {
     success: true,
     morseString: encodeToMorse(SECRET_TRANSMISSION),
-    state: getClientState(teamId)
+    state: await getClientState(teamId)
   };
 }
 
-function submitTransmission(teamId, words) {
-  const state = getOrInitRound3State(teamId);
+async function submitTransmission(teamId, words) {
+  const state = await getOrInitRound3State(teamId);
 
   if (state.completed) {
-    return { success: false, error: 'Transmission already submitted.', state: getClientState(teamId) };
+    return { success: false, error: 'Transmission already submitted.', state: await getClientState(teamId) };
   }
 
   const submittedWords = Array.isArray(words) ? words : [];
@@ -88,13 +88,13 @@ function submitTransmission(teamId, words) {
   else if (correctCount === 1) round3Score = 10;
   else round3Score = 0;
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE round3_state
     SET submission = ?, completed = 1, score = ?
     WHERE team_id = ?
   `).run(JSON.stringify(submittedWords), round3Score, teamId);
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE scores
     SET round3_score = ?, total_score = round1_score + round2_score + ?
     WHERE team_id = ?
@@ -104,16 +104,16 @@ function submitTransmission(teamId, words) {
     success: true,
     correctWords: correctCount,
     scoreAwarded: round3Score,
-    state: getClientState(teamId)
+    state: await getClientState(teamId)
   };
 }
 
-function getClientState(teamId) {
-  const state = getOrInitRound3State(teamId);
+async function getClientState(teamId) {
+  const state = await getOrInitRound3State(teamId);
   const now = Date.now();
   let timeRemaining = ROUND3_TIME;
   if (state.start_time) {
-    timeRemaining = Math.max(0, ROUND3_TIME - (now - state.start_time));
+    timeRemaining = Math.max(0, ROUND3_TIME - (now - Number(state.start_time)));
   }
   const scoreRevealed = Boolean((state.start_time && timeRemaining <= 0) || state.completed);
 
@@ -138,4 +138,3 @@ module.exports = {
   submitTransmission,
   getClientState
 };
-

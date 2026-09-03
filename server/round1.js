@@ -73,22 +73,22 @@ function generateControls(teamId) {
   return mapping;
 }
 
-// Get or initialize Round 1 state from SQLite
-function getOrInitRound1State(teamId) {
-  let row = db.prepare('SELECT * FROM round1_state WHERE team_id = ?').get(teamId);
+// Get or initialize Round 1 state from Postgres
+async function getOrInitRound1State(teamId) {
+  let row = await db.prepare('SELECT * FROM round1_state WHERE team_id = ?').get(teamId);
 
   if (!row) {
     // Ensure team exists
-    const team = db.prepare('SELECT id FROM teams WHERE id = ?').get(teamId);
+    const team = await db.prepare('SELECT id FROM teams WHERE id = ?').get(teamId);
     if (!team) {
-      db.prepare('INSERT OR IGNORE INTO teams (id, name) VALUES (?, ?)').run(teamId, `Team ${teamId}`);
-      db.prepare('INSERT OR IGNORE INTO scores (team_id) VALUES (?)').run(teamId);
+      await db.prepare('INSERT INTO teams (id, name) VALUES (?, ?) ON CONFLICT (id) DO NOTHING').run(teamId, `Team ${teamId}`);
+      await db.prepare('INSERT INTO scores (team_id) VALUES (?) ON CONFLICT (team_id) DO NOTHING').run(teamId);
     }
 
     const rng = getSeededRandom(teamId + '_riddle');
     const riddleIndex = Math.floor(rng() * RIDDLES.length);
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO round1_state (
         team_id, rover_x, rover_y, facing, furthest_cell, start_time,
         time_penalty, riddle_id, riddle_attempts, riddle_solved, failed_all_riddles,
@@ -96,7 +96,7 @@ function getOrInitRound1State(teamId) {
       ) VALUES (?, ?, ?, ?, 0, NULL, 0, ?, 0, 0, 0, 0, 0, 0, 0)
     `).run(teamId, marsMap.start.x, marsMap.start.y, 'E', riddleIndex);
 
-    row = db.prepare('SELECT * FROM round1_state WHERE team_id = ?').get(teamId);
+    row = await db.prepare('SELECT * FROM round1_state WHERE team_id = ?').get(teamId);
   }
 
   return row;
@@ -104,20 +104,20 @@ function getOrInitRound1State(teamId) {
 
 function getTimeRemaining(state) {
   if (!state.start_time) return ROUND1_TIME;
-  const elapsed = (Date.now() - state.start_time) + (state.time_penalty || 0);
+  const elapsed = (Date.now() - Number(state.start_time)) + (state.time_penalty || 0);
   return Math.max(0, ROUND1_TIME - elapsed);
 }
 
-function applyMove(teamId, buttonName) {
-  const state = getOrInitRound1State(teamId);
+async function applyMove(teamId, buttonName) {
+  const state = await getOrInitRound1State(teamId);
 
   if (state.completed) {
-    return { success: false, error: 'Rover has reached the relay station.', state: getClientState(teamId) };
+    return { success: false, error: 'Rover has reached the relay station.', state: await getClientState(teamId) };
   }
 
   const timeRemaining = getTimeRemaining(state);
   if (timeRemaining <= 0) {
-    return { success: false, error: 'Round 1 time expired.', state: getClientState(teamId) };
+    return { success: false, error: 'Round 1 time expired.', state: await getClientState(teamId) };
   }
 
   // Lock movement if at checkpoint and riddle has not been resolved (solved or failed 3 times)
@@ -125,7 +125,7 @@ function applyMove(teamId, buttonName) {
     return {
       success: false,
       error: 'Lockout active: Solve the Mid-Mission Riddle at the checkpoint to proceed.',
-      state: getClientState(teamId)
+      state: await getClientState(teamId)
     };
   }
 
@@ -133,7 +133,7 @@ function applyMove(teamId, buttonName) {
   let startTime = state.start_time;
   if (!startTime) {
     startTime = Date.now();
-    db.prepare('UPDATE round1_state SET start_time = ? WHERE team_id = ?').run(startTime, teamId);
+    await db.prepare('UPDATE round1_state SET start_time = ? WHERE team_id = ?').run(startTime, teamId);
     state.start_time = startTime;
   }
 
@@ -212,7 +212,7 @@ function applyMove(teamId, buttonName) {
   }
 
   // Commit update to database
-  db.prepare(`
+  await db.prepare(`
     UPDATE round1_state
     SET rover_x = ?, rover_y = ?, facing = ?, furthest_cell = ?,
         checkpoint_reached = ?, completed = ?
@@ -220,20 +220,20 @@ function applyMove(teamId, buttonName) {
   `).run(newX, newY, newFacing, furthestCell, checkpointReached, completed, teamId);
 
   // Recalculate score
-  calculateAndSaveRound1Score(teamId);
+  await calculateAndSaveRound1Score(teamId);
 
   return {
     success: true,
     actionExecuted: action,
-    state: getClientState(teamId)
+    state: await getClientState(teamId)
   };
 }
 
-function submitRiddle(teamId, answerText) {
-  const state = getOrInitRound1State(teamId);
+async function submitRiddle(teamId, answerText) {
+  const state = await getOrInitRound1State(teamId);
 
   if (!state.checkpoint_reached || state.checkpoint_passed || state.failed_all_riddles) {
-    return { success: false, error: 'Checkpoint riddle is not currently pending.', state: getClientState(teamId) };
+    return { success: false, error: 'Checkpoint riddle is not currently pending.', state: await getClientState(teamId) };
   }
 
   const riddle = RIDDLES[state.riddle_id] || RIDDLES[0];
@@ -258,26 +258,26 @@ function submitRiddle(teamId, answerText) {
     }
   }
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE round1_state
     SET riddle_attempts = ?, riddle_solved = ?, failed_all_riddles = ?,
         checkpoint_passed = ?, time_penalty = time_penalty + ?
     WHERE team_id = ?
   `).run(attempts, solved, failedAll, checkpointPassed, penaltyAdd, teamId);
 
-  calculateAndSaveRound1Score(teamId);
+  await calculateAndSaveRound1Score(teamId);
 
   return {
     success: true,
     correct: Boolean(solved),
     failedAll: Boolean(failedAll),
     penaltyAddedMs: penaltyAdd,
-    state: getClientState(teamId)
+    state: await getClientState(teamId)
   };
 }
 
-function calculateAndSaveRound1Score(teamId) {
-  const state = getOrInitRound1State(teamId);
+async function calculateAndSaveRound1Score(teamId) {
+  const state = await getOrInitRound1State(teamId);
 
   // Distance Score (Up to 60 Points)
   const totalSteps = marsMap.maxDistance || 1;
@@ -287,7 +287,7 @@ function calculateAndSaveRound1Score(teamId) {
   // Time Bonus (Up to 40 Points)
   let timeScore = 0;
   if (state.completed && state.start_time) {
-    const elapsed = (Date.now() - state.start_time) + (state.time_penalty || 0);
+    const elapsed = (Date.now() - Number(state.start_time)) + (state.time_penalty || 0);
     const timeRemaining = Math.max(0, ROUND1_TIME - elapsed);
     timeScore = Math.floor((timeRemaining / ROUND1_TIME) * 40);
   }
@@ -297,14 +297,14 @@ function calculateAndSaveRound1Score(teamId) {
 
   const score = Math.min(100, Math.max(0, distanceScore + timeScore + riddleBonus));
 
-  db.prepare('UPDATE round1_state SET score = ? WHERE team_id = ?').run(score, teamId);
-  db.prepare('UPDATE scores SET round1_score = ?, total_score = round1_score + round2_score + round3_score WHERE team_id = ?').run(score, teamId);
+  await db.prepare('UPDATE round1_state SET score = ? WHERE team_id = ?').run(score, teamId);
+  await db.prepare('UPDATE scores SET round1_score = ?, total_score = round1_score + round2_score + round3_score WHERE team_id = ?').run(score, teamId);
 
   return score;
 }
 
-function getClientState(teamId) {
-  const state = getOrInitRound1State(teamId);
+async function getClientState(teamId) {
+  const state = await getOrInitRound1State(teamId);
   const riddle = RIDDLES[state.riddle_id] || RIDDLES[0];
   const timeRemaining = getTimeRemaining(state);
   const totalCorrect = marsMap.maxDistance || 1;
@@ -343,10 +343,10 @@ function getClientState(teamId) {
   };
 }
 
-function startRound1ForTeam(teamId, startTime = Date.now()) {
-  const state = getOrInitRound1State(teamId);
+async function startRound1ForTeam(teamId, startTime = Date.now()) {
+  const state = await getOrInitRound1State(teamId);
   if (!state.start_time) {
-    db.prepare('UPDATE round1_state SET start_time = ? WHERE team_id = ?').run(startTime, teamId);
+    await db.prepare('UPDATE round1_state SET start_time = ? WHERE team_id = ?').run(startTime, teamId);
   }
 }
 

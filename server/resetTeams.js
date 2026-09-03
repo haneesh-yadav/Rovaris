@@ -6,20 +6,29 @@
 //
 //   node resetTeams.js
 //
+// Requires DATABASE_URL to be set (same as the server itself).
 // ------------------------------------------------------------------
 
 const db = require('./db');
 
 const TABLES = ['round1_state', 'round2_state', 'round3_state', 'scores', 'teams'];
 
-const before = db.prepare('SELECT COUNT(*) AS n FROM teams').get().n;
+(async () => {
+  try {
+    await db.initDb();
 
-const wipe = db.transaction(() => {
-  for (const table of TABLES) {
-    db.prepare(`DELETE FROM ${table}`).run();
+    const before = (await db.prepare('SELECT COUNT(*) AS n FROM teams').get()).n;
+
+    for (const table of TABLES) {
+      await db.prepare(`DELETE FROM ${table}`).run();
+    }
+
+    console.log(`Cleared ${before} team(s) and all associated round progress / scores.`);
+    console.log('Tables reset:', TABLES.join(', '));
+  } catch (err) {
+    console.error('Reset failed:', err);
+    process.exitCode = 1;
+  } finally {
+    await db.pool.end();
   }
-});
-wipe();
-
-console.log(`Cleared ${before} team(s) and all associated round progress / scores.`);
-console.log('Tables reset:', TABLES.join(', '));
+})();

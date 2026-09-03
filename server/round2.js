@@ -86,14 +86,14 @@ function getSeededRandom(seedStr) {
   };
 }
 
-function getOrInitRound2State(teamId) {
-  let row = db.prepare('SELECT * FROM round2_state WHERE team_id = ?').get(teamId);
+async function getOrInitRound2State(teamId) {
+  let row = await db.prepare('SELECT * FROM round2_state WHERE team_id = ?').get(teamId);
 
   if (!row) {
-    const team = db.prepare('SELECT id FROM teams WHERE id = ?').get(teamId);
+    const team = await db.prepare('SELECT id FROM teams WHERE id = ?').get(teamId);
     if (!team) {
-      db.prepare('INSERT OR IGNORE INTO teams (id, name) VALUES (?, ?)').run(teamId, `Team ${teamId}`);
-      db.prepare('INSERT OR IGNORE INTO scores (team_id) VALUES (?)').run(teamId);
+      await db.prepare('INSERT INTO teams (id, name) VALUES (?, ?) ON CONFLICT (id) DO NOTHING').run(teamId, `Team ${teamId}`);
+      await db.prepare('INSERT INTO scores (team_id) VALUES (?) ON CONFLICT (team_id) DO NOTHING').run(teamId);
     }
 
     const rng = getSeededRandom(teamId + '_r2_words');
@@ -105,7 +105,7 @@ function getOrInitRound2State(teamId) {
       pool.splice(idx, 1);
     }
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO round2_state (
         team_id, phase, active_systems, baseline_systems, power_budget, hangman_index,
         hangman_words, guessed_letters, mistakes, hangman_completed,
@@ -114,15 +114,15 @@ function getOrInitRound2State(teamId) {
       ) VALUES (?, 'allocation', '[]', '[]', 90, 0, ?, '[]', 0, 0, 0, NULL, NULL, ?, 0, 0)
     `).run(teamId, JSON.stringify(words), ALLOCATION_DURATION_MS);
 
-    row = db.prepare('SELECT * FROM round2_state WHERE team_id = ?').get(teamId);
+    row = await db.prepare('SELECT * FROM round2_state WHERE team_id = ?').get(teamId);
   }
 
   return row;
 }
 
-function startRound2ForTeam(teamId, startTime = Date.now()) {
-  getOrInitRound2State(teamId);
-  db.prepare(`
+async function startRound2ForTeam(teamId, startTime = Date.now()) {
+  await getOrInitRound2State(teamId);
+  await db.prepare(`
     UPDATE round2_state
     SET phase = 'allocation', phase_start_time = ?, phase_duration = ?,
         hangman_index = 0, guessed_letters = '[]', mistakes = 0,
@@ -132,19 +132,16 @@ function startRound2ForTeam(teamId, startTime = Date.now()) {
   `).run(startTime, ALLOCATION_DURATION_MS, teamId);
 }
 
-function updatePhaseIfExpired(state) {
+async function updatePhaseIfExpired(state) {
   if (state.completed || state.phase === 'completed') return false;
   if (!state.phase_start_time) return false;
 
   const now = Date.now();
-  const elapsed = now - state.phase_start_time;
+  const elapsed = now - Number(state.phase_start_time);
   if (elapsed < state.phase_duration) return false;
 
   let currentPhase = state.phase;
-  let activeSystems = JSON.parse(state.active_systems || '[]');
-  let hangmanWords = JSON.parse(state.hangman_words || '[]');
   let hangmanIdx = state.hangman_index || 0;
-  let powerBudget = state.power_budget || 80;
   let nextPhase = currentPhase;
   let nextDuration = 0;
   let decisionType = state.decision_type;
@@ -175,7 +172,7 @@ function updatePhaseIfExpired(state) {
     }
   }
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE round2_state
     SET phase = ?, phase_start_time = ?, phase_duration = ?,
         hangman_index = ?, guessed_letters = '[]', mistakes = 0,
@@ -185,19 +182,19 @@ function updatePhaseIfExpired(state) {
   `).run(nextPhase, now, nextDuration, hangmanIdx, hangmanWon, decisionType, completed, state.team_id);
 
   if (completed) {
-    calculateAndSaveRound2Score(state.team_id);
+    await calculateAndSaveRound2Score(state.team_id);
   }
 
   return true;
 }
 
-function toggleSystem(teamId, sysId) {
-  const state = getOrInitRound2State(teamId);
-  updatePhaseIfExpired(state);
+async function toggleSystem(teamId, sysId) {
+  const state = await getOrInitRound2State(teamId);
+  await updatePhaseIfExpired(state);
 
   const activeSystems = JSON.parse(state.active_systems || '[]');
   const sys = SYSTEMS.find(s => s.id === sysId);
-  if (!sys) return { success: false, error: 'System not found.', state: getClientState(teamId) };
+  if (!sys) return { success: false, error: 'System not found.', state: await getClientState(teamId) };
 
   const isCurrentlyActive = activeSystems.includes(sysId);
 
@@ -213,15 +210,15 @@ function toggleSystem(teamId, sysId) {
       }, 0);
 
       if (currentPowerUsed + sys.cost > state.power_budget) {
-        return { success: false, error: `Insufficient power budget (Max ${state.power_budget} units).`, state: getClientState(teamId) };
+        return { success: false, error: `Insufficient power budget (Max ${state.power_budget} units).`, state: await getClientState(teamId) };
       }
       newActive = [...activeSystems, sysId];
     }
 
-    db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
-    calculateAndSaveRound2Score(teamId);
+    await db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
+    await calculateAndSaveRound2Score(teamId);
 
-    return { success: true, state: getClientState(teamId) };
+    return { success: true, state: await getClientState(teamId) };
   }
 
   // During decision phase
@@ -231,7 +228,7 @@ function toggleSystem(teamId, sysId) {
     if (state.decision_type === 'power_boost') {
       // Baseline active systems cannot be dropped
       if (baseline.includes(sysId)) {
-        return { success: false, error: 'Previously active systems cannot be dropped.', state: getClientState(teamId) };
+        return { success: false, error: 'Previously active systems cannot be dropped.', state: await getClientState(teamId) };
       }
 
       let newActive = [];
@@ -246,18 +243,18 @@ function toggleSystem(teamId, sysId) {
         }, 0);
 
         if (currentPowerUsed + sys.cost > state.power_budget) {
-          return { success: false, error: `Insufficient power budget (${currentPowerUsed + sys.cost} / ${state.power_budget}).`, state: getClientState(teamId) };
+          return { success: false, error: `Insufficient power budget (${currentPowerUsed + sys.cost} / ${state.power_budget}).`, state: await getClientState(teamId) };
         }
         newActive = [...activeSystems, sysId];
       }
 
-      db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
-      calculateAndSaveRound2Score(teamId);
-      return { success: true, state: getClientState(teamId) };
+      await db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
+      await calculateAndSaveRound2Score(teamId);
+      return { success: true, state: await getClientState(teamId) };
     } else if (state.decision_type === 'forced_shutdown') {
       // Only baseline active systems can be chosen for shutdown
       if (!baseline.includes(sysId)) {
-        return { success: false, error: 'Only previously active systems can be selected for shutdown.', state: getClientState(teamId) };
+        return { success: false, error: 'Only previously active systems can be selected for shutdown.', state: await getClientState(teamId) };
       }
 
       let newActive = [];
@@ -269,31 +266,31 @@ function toggleSystem(teamId, sysId) {
         newActive = [...activeSystems, sysId];
       }
 
-      db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
-      calculateAndSaveRound2Score(teamId);
-      return { success: true, state: getClientState(teamId) };
+      await db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
+      await calculateAndSaveRound2Score(teamId);
+      return { success: true, state: await getClientState(teamId) };
     }
   }
 
-  return { success: false, error: 'System modifications locked during current phase.', state: getClientState(teamId) };
+  return { success: false, error: 'System modifications locked during current phase.', state: await getClientState(teamId) };
 }
 
-function guessLetter(teamId, letter) {
-  const state = getOrInitRound2State(teamId);
-  updatePhaseIfExpired(state);
+async function guessLetter(teamId, letter) {
+  const state = await getOrInitRound2State(teamId);
+  await updatePhaseIfExpired(state);
 
   if (!state.phase.startsWith('hangman_') || state.hangman_completed) {
-    return { success: false, error: 'Hangman challenge not currently open for guesses.', state: getClientState(teamId) };
+    return { success: false, error: 'Hangman challenge not currently open for guesses.', state: await getClientState(teamId) };
   }
 
   const char = String(letter).toUpperCase().trim();
   if (!char || char.length !== 1 || !/[A-Z]/.test(char)) {
-    return { success: false, error: 'Invalid character.', state: getClientState(teamId) };
+    return { success: false, error: 'Invalid character.', state: await getClientState(teamId) };
   }
 
   const guessed = JSON.parse(state.guessed_letters || '[]');
   if (guessed.includes(char)) {
-    return { success: false, error: 'Letter already guessed.', state: getClientState(teamId) };
+    return { success: false, error: 'Letter already guessed.', state: await getClientState(teamId) };
   }
 
   guessed.push(char);
@@ -323,7 +320,7 @@ function guessLetter(teamId, letter) {
     hangmanWon = 0;
   }
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE round2_state
     SET guessed_letters = ?, mistakes = ?, hangman_completed = ?,
         hangman_won = ?, power_budget = ?, baseline_systems = ?
@@ -337,7 +334,7 @@ function guessLetter(teamId, letter) {
     const decisionType = hangmanWon ? 'power_boost' : 'forced_shutdown';
     const now = Date.now();
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE round2_state
       SET phase = ?, phase_start_time = ?, phase_duration = ?, decision_type = ?,
           baseline_systems = ?
@@ -345,17 +342,17 @@ function guessLetter(teamId, letter) {
     `).run(nextPhase, now, DECISION_DURATION_MS, decisionType, state.active_systems, teamId);
   }
 
-  calculateAndSaveRound2Score(teamId);
+  await calculateAndSaveRound2Score(teamId);
 
-  return { success: true, state: getClientState(teamId) };
+  return { success: true, state: await getClientState(teamId) };
 }
 
-function advanceDecision(teamId) {
-  const state = getOrInitRound2State(teamId);
+async function advanceDecision(teamId) {
+  const state = await getOrInitRound2State(teamId);
   const currentPhase = state.phase;
 
   if (!currentPhase.startsWith('decision_')) {
-    return { success: false, error: 'Not currently in decision window.', state: getClientState(teamId) };
+    return { success: false, error: 'Not currently in decision window.', state: await getClientState(teamId) };
   }
 
   const baseline = JSON.parse(state.baseline_systems || '[]');
@@ -363,7 +360,7 @@ function advanceDecision(teamId) {
 
   if (state.decision_type === 'forced_shutdown') {
     if (baseline.length > 0 && active.length >= baseline.length) {
-      return { success: false, error: 'Please select at least 1 active system to shut down before proceeding.', state: getClientState(teamId) };
+      return { success: false, error: 'Please select at least 1 active system to shut down before proceeding.', state: await getClientState(teamId) };
     }
   } else if (state.decision_type === 'power_boost') {
     const currentPowerUsed = active.reduce((sum, id) => {
@@ -372,7 +369,7 @@ function advanceDecision(teamId) {
     }, 0);
     const canAffordAny = SYSTEMS.some(s => !baseline.includes(s.id) && s.cost <= (state.power_budget - currentPowerUsed));
     if (canAffordAny && active.length <= baseline.length) {
-      return { success: false, error: 'Please select an unselected system to activate before proceeding.', state: getClientState(teamId) };
+      return { success: false, error: 'Please select an unselected system to activate before proceeding.', state: await getClientState(teamId) };
     }
   }
 
@@ -397,7 +394,7 @@ function advanceDecision(teamId) {
     completed = 1;
   }
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE round2_state
     SET phase = ?, phase_start_time = ?, phase_duration = ?,
         hangman_index = ?, guessed_letters = '[]', mistakes = 0,
@@ -406,12 +403,12 @@ function advanceDecision(teamId) {
     WHERE team_id = ?
   `).run(nextPhase, now, nextDuration, hangmanIdx, hangmanWon, decisionType, completed, state.active_systems, teamId);
 
-  calculateAndSaveRound2Score(teamId);
-  return { success: true, state: getClientState(teamId) };
+  await calculateAndSaveRound2Score(teamId);
+  return { success: true, state: await getClientState(teamId) };
 }
 
-function calculateAndSaveRound2Score(teamId) {
-  const state = getOrInitRound2State(teamId);
+async function calculateAndSaveRound2Score(teamId) {
+  const state = await getOrInitRound2State(teamId);
   const activeSystems = JSON.parse(state.active_systems || '[]');
 
   // Active system preserved points
@@ -434,17 +431,17 @@ function calculateAndSaveRound2Score(teamId) {
 
   const totalRound2Score = systemsScore + hangmanBonus;
 
-  db.prepare('UPDATE round2_state SET score = ? WHERE team_id = ?').run(totalRound2Score, teamId);
-  db.prepare('UPDATE scores SET round2_score = ?, total_score = round1_score + round2_score + round3_score WHERE team_id = ?').run(totalRound2Score, teamId);
+  await db.prepare('UPDATE round2_state SET score = ? WHERE team_id = ?').run(totalRound2Score, teamId);
+  await db.prepare('UPDATE scores SET round2_score = ?, total_score = round1_score + round2_score + round3_score WHERE team_id = ?').run(totalRound2Score, teamId);
 
   return totalRound2Score;
 }
 
-function getClientState(teamId) {
-  let state = getOrInitRound2State(teamId);
-  const changed = updatePhaseIfExpired(state);
+async function getClientState(teamId) {
+  let state = await getOrInitRound2State(teamId);
+  const changed = await updatePhaseIfExpired(state);
   if (changed) {
-    state = db.prepare('SELECT * FROM round2_state WHERE team_id = ?').get(teamId) || state;
+    state = (await db.prepare('SELECT * FROM round2_state WHERE team_id = ?').get(teamId)) || state;
   }
 
   const activeSystems = JSON.parse(state.active_systems || '[]');
@@ -458,7 +455,7 @@ function getClientState(teamId) {
   const now = Date.now();
   let timeRemaining = state.phase_duration || ALLOCATION_DURATION_MS;
   if (state.phase_start_time) {
-    const elapsed = now - state.phase_start_time;
+    const elapsed = now - Number(state.phase_start_time);
     timeRemaining = Math.max(0, (state.phase_duration || 0) - elapsed);
   }
 
