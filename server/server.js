@@ -16,12 +16,27 @@ const ALLOWED_TEAMS_MAP = new Map(
   ALLOWED_TEAMS.map((name) => [name.trim().toLowerCase(), name.trim()])
 );
 
+// Admin password lives only in the server's environment — never in the
+// client bundle. Set ADMIN_PASSWORD in Render's environment variables.
+// If it's not set, all admin actions are refused (fail closed, not open).
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.warn(
+    '[admin] ADMIN_PASSWORD is not set. Admin login and all admin_* ' +
+    'actions will be refused until it is configured.'
+  );
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// CSV Export Endpoint
+// CSV Export Endpoint — gated behind the same admin password, passed as
+// a query param since this is a plain GET link, not a socket event.
 app.get('/api/export', async (req, res) => {
+  if (!ADMIN_PASSWORD || req.query.token !== ADMIN_PASSWORD) {
+    return res.status(401).send('Unauthorized');
+  }
   try {
     const csv = await admin.generateCSV();
     res.header('Content-Type', 'text/csv');
@@ -65,10 +80,42 @@ async function broadcastPhaseChange(session) {
   await broadcastLobbyUpdate();
 }
 
+// Rejects an admin_* call unless this socket has already passed
+// admin_login on this connection. Every admin_* handler below calls
+// this first and returns immediately if it fails.
+function requireAdmin(socket, callback) {
+  if (!socket.isAdmin) {
+    if (callback) callback({ success: false, error: 'Admin authorization required.' });
+    return false;
+  }
+  return true;
+}
+
+// Gameplay events pass teamId as an argument for backward compatibility
+// with the existing client calls, but it is never trusted — the team a
+// socket may act as is fixed at team_login time. This stops one team's
+// tablet from acting on another team's state by passing a different id.
+function ownTeamId(socket, callback) {
+  if (!socket.teamId) {
+    if (callback) callback({ success: false, error: 'Not logged in.' });
+    return null;
+  }
+  return socket.teamId;
+}
+
 io.on('connection', (socket) => {
   // ----------------------------------------------------
   // 1. Team Authentication & Lobby
   // ----------------------------------------------------
+  socket.on('admin_login', (password, callback) => {
+    if (ADMIN_PASSWORD && password === ADMIN_PASSWORD) {
+      socket.isAdmin = true;
+      if (callback) callback({ success: true });
+    } else {
+      if (callback) callback({ success: false, error: 'Invalid password.' });
+    }
+  });
+
   socket.on('team_login', async (teamName, members, callback) => {
     try {
       // Backward-compatible signature: allow team_login(teamName, callback)
@@ -157,7 +204,9 @@ io.on('connection', (socket) => {
   // ----------------------------------------------------
   // 2. Round 1 Events
   // ----------------------------------------------------
-  socket.on('get_round1_state', async (teamId, callback) => {
+  socket.on('get_round1_state', async (_teamId, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const state = await round1.getClientState(teamId);
       callback({ success: true, state });
@@ -166,7 +215,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('rover_move', async (teamId, buttonName, callback) => {
+  socket.on('rover_move', async (_teamId, buttonName, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const result = await round1.applyMove(teamId, buttonName);
       if (result.success) {
@@ -179,7 +230,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('submit_riddle', async (teamId, answer, callback) => {
+  socket.on('submit_riddle', async (_teamId, answer, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const result = await round1.submitRiddle(teamId, answer);
       if (result.success) {
@@ -195,7 +248,9 @@ io.on('connection', (socket) => {
   // ----------------------------------------------------
   // 3. Round 2 Events
   // ----------------------------------------------------
-  socket.on('get_round2_state', async (teamId, callback) => {
+  socket.on('get_round2_state', async (_teamId, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const state = await round2.getClientState(teamId);
       callback({ success: true, state });
@@ -204,7 +259,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('toggle_system', async (teamId, sysId, callback) => {
+  socket.on('toggle_system', async (_teamId, sysId, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const result = await round2.toggleSystem(teamId, sysId);
       if (result.success) {
@@ -217,7 +274,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('guess_letter', async (teamId, letter, callback) => {
+  socket.on('guess_letter', async (_teamId, letter, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const result = await round2.guessLetter(teamId, letter);
       if (result.success) {
@@ -230,7 +289,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('advance_decision', async (teamId, callback) => {
+  socket.on('advance_decision', async (_teamId, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const result = await round2.advanceDecision(teamId);
       if (result.success) {
@@ -246,7 +307,9 @@ io.on('connection', (socket) => {
   // ----------------------------------------------------
   // 4. Round 3 Events
   // ----------------------------------------------------
-  socket.on('get_round3_state', async (teamId, callback) => {
+  socket.on('get_round3_state', async (_teamId, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const state = await round3.getClientState(teamId);
       callback({ success: true, state });
@@ -255,7 +318,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('play_audio', async (teamId, callback) => {
+  socket.on('play_audio', async (_teamId, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const result = await round3.playAudio(teamId);
       if (result.success) {
@@ -268,7 +333,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('submit_transmission', async (teamId, words, callback) => {
+  socket.on('submit_transmission', async (_teamId, words, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const result = await round3.submitTransmission(teamId, words);
       if (result.success) {
@@ -281,7 +348,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('start_round_game', async (teamId, roundNum, callback) => {
+  socket.on('start_round_game', async (_teamId, roundNum, callback) => {
+    const teamId = ownTeamId(socket, callback);
+    if (!teamId) return;
     try {
       const now = Date.now();
       if (roundNum === 1) {
@@ -305,6 +374,7 @@ io.on('connection', (socket) => {
   // 5. Admin & Global Control Events
   // ----------------------------------------------------
   socket.on('get_admin_telemetry', async (callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       callback({ success: true, telemetry: await admin.getAdminTelemetry() });
     } catch (err) {
@@ -321,6 +391,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin_set_phase', async (newPhase, callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       console.log(`[Admin] Switching global game phase to: ${newPhase}`);
       const session = await admin.setGamePhase(newPhase);
@@ -351,6 +422,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin_force_advance', async (teamId, roundNum, callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       if (roundNum === 1) {
         await db.prepare('UPDATE round1_state SET completed = 1 WHERE team_id = ?').run(teamId);
@@ -372,6 +444,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin_toggle_pause', async (callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       const session = await admin.toggleGamePause();
       io.emit('global_pause_toggle', session);
@@ -383,6 +456,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin_adjust_score', async (teamId, roundNum, delta, callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       const telemetry = await admin.adjustTeamScore(teamId, roundNum, delta);
       await broadcastAdminUpdate();
@@ -397,6 +471,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin_override_time', async (teamId, deltaMin, callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       const telemetry = await admin.overrideTeamTime(teamId, deltaMin * 60 * 1000);
       io.to(teamId).emit('round1_update', await round1.getClientState(teamId));
@@ -408,6 +483,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin_trigger_reveal', async (roundNum, callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       const session = await admin.triggerReveal(roundNum);
       io.emit('global_reveal', session.reveals);
@@ -419,6 +495,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin_reset_game', async (callback) => {
+    if (!requireAdmin(socket, callback)) return;
     try {
       const telemetry = await admin.resetGame();
       const session = await admin.getSessionState();
