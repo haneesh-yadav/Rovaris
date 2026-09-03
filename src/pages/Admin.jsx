@@ -19,16 +19,53 @@ export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleLogin = (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (password === 'Rovaris@2026') {
-      setIsAuthenticated(true);
-      setAuthError('');
-    } else {
-      setAuthError('Access Denied');
+    if (!socket) {
+      setAuthError('Socket connection offline. Please reload or check server.');
+      return;
     }
+    setIsLoggingIn(true);
+    setAuthError('');
+    socket.emit('admin_login', password, (res) => {
+      setIsLoggingIn(false);
+      if (res && res.success) {
+        setIsAuthenticated(true);
+        setAuthError('');
+      } else {
+        setIsAuthenticated(false);
+        setAuthError(res?.error || 'Access Denied');
+      }
+    });
   };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // The server tracks admin authorization on the socket connection itself
+    // (socket.isAdmin), not on anything persistent. If this socket drops and
+    // socket.io reconnects it under the hood (server restart, cold start,
+    // tablet sleeping, flaky wifi), the new connection starts unauthorized
+    // again even though our local isAuthenticated state still says "logged
+    // in." Re-run admin_login silently on every reconnect so the session
+    // doesn't quietly go stale mid-event.
+    const reauthorize = () => {
+      if (!isAuthenticated || !password) return;
+      socket.emit('admin_login', password, (res) => {
+        if (!(res && res.success)) {
+          setIsAuthenticated(false);
+          setAuthError('Session expired after a connection drop — please log in again.');
+        }
+      });
+    };
+
+    socket.on('connect', reauthorize);
+    return () => {
+      socket.off('connect', reauthorize);
+    };
+  }, [socket, isAuthenticated, password]);
 
   useEffect(() => {
     if (!socket) return;
@@ -144,7 +181,8 @@ export default function Admin() {
                     <button
                       type="submit"
                       aria-label="Login"
-                      className="flex items-center justify-center w-11 h-11 rounded-2xl bg-[#C15B34] text-white shrink-0 transition-opacity"
+                      disabled={isLoggingIn}
+                      className="flex items-center justify-center w-11 h-11 rounded-2xl bg-[#C15B34] text-white shrink-0 transition-opacity disabled:opacity-50"
                     >
                       <Icon name="security" className="w-5 h-5" />
                     </button>
