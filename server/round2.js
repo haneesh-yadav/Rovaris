@@ -216,9 +216,12 @@ async function toggleSystem(teamId, sysId) {
     }
 
     await db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
-    await calculateAndSaveRound2Score(teamId);
 
-    return { success: true, state: await getClientState(teamId) };
+    const updatedState = { ...state, active_systems: JSON.stringify(newActive) };
+    const score = await calculateAndSaveRound2Score(teamId, updatedState);
+    updatedState.score = score;
+
+    return { success: true, state: await getClientState(teamId, updatedState) };
   }
 
   // During decision phase
@@ -249,8 +252,10 @@ async function toggleSystem(teamId, sysId) {
       }
 
       await db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
-      await calculateAndSaveRound2Score(teamId);
-      return { success: true, state: await getClientState(teamId) };
+      const updatedState = { ...state, active_systems: JSON.stringify(newActive) };
+      const score = await calculateAndSaveRound2Score(teamId, updatedState);
+      updatedState.score = score;
+      return { success: true, state: await getClientState(teamId, updatedState) };
     } else if (state.decision_type === 'forced_shutdown') {
       // Only baseline active systems can be chosen for shutdown
       if (!baseline.includes(sysId)) {
@@ -267,8 +272,10 @@ async function toggleSystem(teamId, sysId) {
       }
 
       await db.prepare('UPDATE round2_state SET active_systems = ? WHERE team_id = ?').run(JSON.stringify(newActive), teamId);
-      await calculateAndSaveRound2Score(teamId);
-      return { success: true, state: await getClientState(teamId) };
+      const updatedState = { ...state, active_systems: JSON.stringify(newActive) };
+      const score = await calculateAndSaveRound2Score(teamId, updatedState);
+      updatedState.score = score;
+      return { success: true, state: await getClientState(teamId, updatedState) };
     }
   }
 
@@ -327,6 +334,16 @@ async function guessLetter(teamId, letter) {
     WHERE team_id = ?
   `).run(JSON.stringify(guessed), mistakes, completed, hangmanWon, powerBudget, state.active_systems, teamId);
 
+  const updatedState = {
+    ...state,
+    guessed_letters: JSON.stringify(guessed),
+    mistakes,
+    hangman_completed: completed,
+    hangman_won: hangmanWon,
+    power_budget: powerBudget,
+    baseline_systems: state.active_systems
+  };
+
   // If completed, automatically set decision phase
   if (completed) {
     const idx = state.hangman_index;
@@ -340,11 +357,17 @@ async function guessLetter(teamId, letter) {
           baseline_systems = ?
       WHERE team_id = ?
     `).run(nextPhase, now, DECISION_DURATION_MS, decisionType, state.active_systems, teamId);
+
+    updatedState.phase = nextPhase;
+    updatedState.phase_start_time = now;
+    updatedState.phase_duration = DECISION_DURATION_MS;
+    updatedState.decision_type = decisionType;
   }
 
-  await calculateAndSaveRound2Score(teamId);
+  const score = await calculateAndSaveRound2Score(teamId, updatedState);
+  updatedState.score = score;
 
-  return { success: true, state: await getClientState(teamId) };
+  return { success: true, state: await getClientState(teamId, updatedState) };
 }
 
 async function advanceDecision(teamId) {
@@ -403,12 +426,28 @@ async function advanceDecision(teamId) {
     WHERE team_id = ?
   `).run(nextPhase, now, nextDuration, hangmanIdx, hangmanWon, decisionType, completed, state.active_systems, teamId);
 
-  await calculateAndSaveRound2Score(teamId);
-  return { success: true, state: await getClientState(teamId) };
+  const updatedState = {
+    ...state,
+    phase: nextPhase,
+    phase_start_time: now,
+    phase_duration: nextDuration,
+    hangman_index: hangmanIdx,
+    guessed_letters: '[]',
+    mistakes: 0,
+    hangman_completed: 0,
+    hangman_won: hangmanWon,
+    decision_type: decisionType,
+    completed,
+    baseline_systems: state.active_systems
+  };
+
+  const score = await calculateAndSaveRound2Score(teamId, updatedState);
+  updatedState.score = score;
+  return { success: true, state: await getClientState(teamId, updatedState) };
 }
 
-async function calculateAndSaveRound2Score(teamId) {
-  const state = await getOrInitRound2State(teamId);
+async function calculateAndSaveRound2Score(teamId, stateOverride) {
+  const state = stateOverride || await getOrInitRound2State(teamId);
   const activeSystems = JSON.parse(state.active_systems || '[]');
 
   // Active system preserved points
@@ -437,8 +476,8 @@ async function calculateAndSaveRound2Score(teamId) {
   return totalRound2Score;
 }
 
-async function getClientState(teamId) {
-  let state = await getOrInitRound2State(teamId);
+async function getClientState(teamId, stateOverride) {
+  let state = stateOverride || await getOrInitRound2State(teamId);
   const changed = await updatePhaseIfExpired(state);
   if (changed) {
     state = (await db.prepare('SELECT * FROM round2_state WHERE team_id = ?').get(teamId)) || state;

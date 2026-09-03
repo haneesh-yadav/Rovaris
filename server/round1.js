@@ -219,13 +219,28 @@ async function applyMove(teamId, buttonName) {
     WHERE team_id = ?
   `).run(newX, newY, newFacing, furthestCell, checkpointReached, completed, teamId);
 
+  // We already know exactly what the row now looks like — merge it in
+  // memory instead of re-SELECTing it twice more (once for the score
+  // calc, once for the response state). Cuts this handler from ~3
+  // SELECTs to 1 per move.
+  const updatedState = {
+    ...state,
+    rover_x: newX,
+    rover_y: newY,
+    facing: newFacing,
+    furthest_cell: furthestCell,
+    checkpoint_reached: checkpointReached,
+    completed
+  };
+
   // Recalculate score
-  await calculateAndSaveRound1Score(teamId);
+  const score = await calculateAndSaveRound1Score(teamId, updatedState);
+  updatedState.score = score;
 
   return {
     success: true,
     actionExecuted: action,
-    state: await getClientState(teamId)
+    state: await getClientState(teamId, updatedState)
   };
 }
 
@@ -265,19 +280,29 @@ async function submitRiddle(teamId, answerText) {
     WHERE team_id = ?
   `).run(attempts, solved, failedAll, checkpointPassed, penaltyAdd, teamId);
 
-  await calculateAndSaveRound1Score(teamId);
+  const updatedState = {
+    ...state,
+    riddle_attempts: attempts,
+    riddle_solved: solved,
+    failed_all_riddles: failedAll,
+    checkpoint_passed: checkpointPassed,
+    time_penalty: (state.time_penalty || 0) + penaltyAdd
+  };
+
+  const score = await calculateAndSaveRound1Score(teamId, updatedState);
+  updatedState.score = score;
 
   return {
     success: true,
     correct: Boolean(solved),
     failedAll: Boolean(failedAll),
     penaltyAddedMs: penaltyAdd,
-    state: await getClientState(teamId)
+    state: await getClientState(teamId, updatedState)
   };
 }
 
-async function calculateAndSaveRound1Score(teamId) {
-  const state = await getOrInitRound1State(teamId);
+async function calculateAndSaveRound1Score(teamId, stateOverride) {
+  const state = stateOverride || await getOrInitRound1State(teamId);
 
   // Distance Score (Up to 60 Points)
   const totalSteps = marsMap.maxDistance || 1;
@@ -303,8 +328,8 @@ async function calculateAndSaveRound1Score(teamId) {
   return score;
 }
 
-async function getClientState(teamId) {
-  const state = await getOrInitRound1State(teamId);
+async function getClientState(teamId, stateOverride) {
+  const state = stateOverride || await getOrInitRound1State(teamId);
   const riddle = RIDDLES[state.riddle_id] || RIDDLES[0];
   const timeRemaining = getTimeRemaining(state);
   const totalCorrect = marsMap.maxDistance || 1;

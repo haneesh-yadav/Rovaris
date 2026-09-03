@@ -32,6 +32,16 @@ export default function TeamDashboard() {
   const [riddleSubmitting, setRiddleSubmitting] = useState(false);
   const [riddleFeedback, setRiddleFeedback] = useState(null);
 
+  // In-flight guards: on a touchscreen it's easy to tap a control several
+  // times before the server responds to the first tap. Each tap is a full
+  // round-trip (DB write + score recalc + a global admin/leaderboard
+  // broadcast), so with ~15 devices live at once, unthrottled rapid taps
+  // are what turn into visible lag/stuckness. These flags make sure only
+  // one request per action-group is ever in flight at a time.
+  const [roverMovePending, setRoverMovePending] = useState(false);
+  const [r2ActionPending, setR2ActionPending] = useState(false);
+  const [r3AudioPending, setR3AudioPending] = useState(false);
+
   // Storyline state: track which storylines this team has completed
   const [seenCinematics, setSeenCinematics] = useState({
     intro: false,
@@ -120,8 +130,10 @@ export default function TeamDashboard() {
 
   // Round 1 Handlers
   const handleRoverMove = (buttonName) => {
-    if (!socket || !team) return;
+    if (!socket || !team || roverMovePending) return;
+    setRoverMovePending(true);
     socket.emit('rover_move', team.id, buttonName, (res) => {
+      setRoverMovePending(false);
       if (res && res.state) setR1State(res.state);
     });
   };
@@ -147,8 +159,10 @@ export default function TeamDashboard() {
 
   // Round 2 Handlers
   const handleToggleSystem = (sysId) => {
-    if (!socket || !team) return;
+    if (!socket || !team || r2ActionPending) return;
+    setR2ActionPending(true);
     socket.emit('toggle_system', team.id, sysId, (res) => {
+      setR2ActionPending(false);
       if (res && res.state) setR2State(res.state);
       if (res && !res.success && res.error) {
         alert(res.error);
@@ -157,23 +171,29 @@ export default function TeamDashboard() {
   };
 
   const handleGuessLetter = (letter) => {
-    if (!socket || !team) return;
+    if (!socket || !team || r2ActionPending) return;
+    setR2ActionPending(true);
     socket.emit('guess_letter', team.id, letter, (res) => {
+      setR2ActionPending(false);
       if (res && res.state) setR2State(res.state);
     });
   };
 
   const handleAdvanceDecision = () => {
-    if (!socket || !team) return;
+    if (!socket || !team || r2ActionPending) return;
+    setR2ActionPending(true);
     socket.emit('advance_decision', team.id, (res) => {
+      setR2ActionPending(false);
       if (res && res.state) setR2State(res.state);
     });
   };
 
   // Round 3 Handlers
   const handlePlayAudio = (playCallback) => {
-    if (!socket || !team) return;
+    if (!socket || !team || r3AudioPending) return;
+    setR3AudioPending(true);
     socket.emit('play_audio', team.id, (res) => {
+      setR3AudioPending(false);
       if (res && res.success) {
         if (res.state) setR3State(res.state);
         playCallback(res.morseString);
@@ -352,7 +372,7 @@ export default function TeamDashboard() {
                   <Controls
                     onMove={handleRoverMove}
                     facing={r1State.rover.facing}
-                    disabled={gameSession.isPaused || r1State.completed || (r1State.checkpointReached && !r1State.checkpointPassed)}
+                    disabled={gameSession.isPaused || r1State.completed || (r1State.checkpointReached && !r1State.checkpointPassed) || roverMovePending}
                     proximityPercent={r1State.proximityPercent}
                     coordinates={{ x: r1State.rover.x, y: r1State.rover.y }}
                   />
@@ -452,7 +472,7 @@ export default function TeamDashboard() {
                     completed={r2State.hangman.completed || r2State.phase.startsWith('decision_')}
                     won={r2State.hangman.won}
                     onGuessLetter={handleGuessLetter}
-                    disabled={gameSession.isPaused || r2State.phase.startsWith('decision_')}
+                    disabled={gameSession.isPaused || r2State.phase.startsWith('decision_') || r2ActionPending}
                   />
                 )}
 
@@ -466,7 +486,7 @@ export default function TeamDashboard() {
                   onAdvanceDecision={handleAdvanceDecision}
                   phase={r2State.phase}
                   decisionType={r2State.decisionType}
-                  disabled={gameSession.isPaused || r2State.completed}
+                  disabled={gameSession.isPaused || r2State.completed || r2ActionPending}
                 />
               </>
             )}
@@ -495,7 +515,7 @@ export default function TeamDashboard() {
                 score={r3State.score}
                 onPlayAudio={handlePlayAudio}
                 onSubmitWords={handleSubmitTransmission}
-                disabled={gameSession.isPaused}
+                disabled={gameSession.isPaused || r3AudioPending}
               />
             )}
           </div>

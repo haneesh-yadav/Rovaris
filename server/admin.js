@@ -88,12 +88,18 @@ async function getAdminTelemetry() {
   };
 }
 
-async function getLeaderboard() {
-  const telemetry = await getAdminTelemetry();
-  const sorted = [...telemetry.teams].sort((a, b) => b.scores.total - a.scores.total);
+// Accepts an optional already-fetched telemetry object so callers that
+// need both admin telemetry and the leaderboard in the same tick (see
+// broadcastAdminUpdate in server.js) don't pay for a second full
+// per-team recompute across every round's state. Standalone callers
+// (e.g. the plain 'get_leaderboard' socket event) can still call this
+// with no argument and it computes telemetry itself.
+async function getLeaderboard(telemetry) {
+  const t = telemetry || await getAdminTelemetry();
+  const sorted = [...t.teams].sort((a, b) => b.scores.total - a.scores.total);
   return {
     leaderboard: sorted,
-    reveals: telemetry.session.reveals
+    reveals: t.session.reveals
   };
 }
 

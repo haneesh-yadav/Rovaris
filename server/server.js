@@ -58,11 +58,19 @@ const io = new Server(server, {
 
 // Broadcast helpers
 async function broadcastAdminUpdate() {
-  const [telemetry, leaderboard] = await Promise.all([
-    admin.getAdminTelemetry(),
-    admin.getLeaderboard()
-  ]);
-  io.emit('admin_telemetry_update', telemetry);
+  // Compute telemetry ONCE, then derive the leaderboard from it in memory
+  // instead of recomputing a full per-team, per-round sweep a second time
+  // (getLeaderboard used to call getAdminTelemetry() again internally —
+  // that doubled every action's DB load for no reason).
+  const telemetry = await admin.getAdminTelemetry();
+  const leaderboard = await admin.getLeaderboard(telemetry);
+
+  // admin_telemetry_update carries full per-team detail (rover position,
+  // hangman words, etc.) that only the admin panel uses — send it only to
+  // sockets that have authenticated as admin, not to every player tablet.
+  io.to('admins').emit('admin_telemetry_update', telemetry);
+  // The leaderboard IS shown on every team's dashboard as well as the
+  // public leaderboard page, so this one stays a broadcast to everyone.
   io.emit('leaderboard_update', leaderboard);
 }
 
@@ -110,6 +118,7 @@ io.on('connection', (socket) => {
   socket.on('admin_login', (password, callback) => {
     if (ADMIN_PASSWORD && password === ADMIN_PASSWORD) {
       socket.isAdmin = true;
+      socket.join('admins'); // scopes admin_telemetry_update to this socket
       if (callback) callback({ success: true });
     } else {
       if (callback) callback({ success: false, error: 'Invalid password.' });

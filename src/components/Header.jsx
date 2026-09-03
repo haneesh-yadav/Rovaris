@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Clock, Info, AlertTriangle, X, Gamepad2 } from 'lucide-react';
 import gravitasLogo from '../assets/gravitas26.svg';
 import stellarLogo from '../assets/stellar-logo.webp';
+import sbiLogo from '../assets/sbi-logo.webp';
 import vaayusastraLogo from '../assets/vaayusastra-logo.png';
 import '../css/components/Header.css';
 
@@ -69,6 +70,7 @@ export default function Header({
         <div className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2 sm:gap-3.5">
           <img src={gravitasLogo} alt="Gravitas 26" className="h-8 sm:h-11 w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
           <img src={stellarLogo} alt="VIT Stellar" className="h-8 sm:h-11 w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
+          <img src={sbiLogo} alt="SBI" className="h-8 sm:h-11 w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
           <img src={vaayusastraLogo} alt="Vaayusastra Aerospace" className="h-11 sm:h-16 w-auto object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]" />
         </div>
 

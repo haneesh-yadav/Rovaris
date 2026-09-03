@@ -31,6 +31,15 @@ const pool = new Pool({
   // Hosted free Postgres providers (Neon, Render, Supabase, etc.) require
   // SSL; local dev/test Postgres does not.
   ssl: isLocalHost ? false : { rejectUnauthorized: false },
+  // Default pg pool size is 10. With ~15 devices playing concurrently,
+  // each action fires several sequential queries (own state + a full
+  // admin/leaderboard recompute), which can exhaust a 10-connection pool
+  // and cause requests to queue — this is what shows up as "stuck" UI
+  // under load. Raise it with headroom; most managed free-tier Postgres
+  // plans (Neon, Supabase, Render) comfortably support 20-30 connections.
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 
 pool.on('error', (err) => {

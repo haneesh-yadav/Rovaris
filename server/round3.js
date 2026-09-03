@@ -57,10 +57,12 @@ async function playAudio(teamId) {
   const timesPlayed = (state.playbacks_remaining || 0) + 1;
   await db.prepare('UPDATE round3_state SET playbacks_remaining = ? WHERE team_id = ?').run(timesPlayed, teamId);
 
+  const updatedState = { ...state, playbacks_remaining: timesPlayed };
+
   return {
     success: true,
     morseString: encodeToMorse(SECRET_TRANSMISSION),
-    state: await getClientState(teamId)
+    state: await getClientState(teamId, updatedState)
   };
 }
 
@@ -100,16 +102,23 @@ async function submitTransmission(teamId, words) {
     WHERE team_id = ?
   `).run(round3Score, round3Score, teamId);
 
+  const updatedState = {
+    ...state,
+    submission: JSON.stringify(submittedWords),
+    completed: 1,
+    score: round3Score
+  };
+
   return {
     success: true,
     correctWords: correctCount,
     scoreAwarded: round3Score,
-    state: await getClientState(teamId)
+    state: await getClientState(teamId, updatedState)
   };
 }
 
-async function getClientState(teamId) {
-  const state = await getOrInitRound3State(teamId);
+async function getClientState(teamId, stateOverride) {
+  const state = stateOverride || await getOrInitRound3State(teamId);
   const now = Date.now();
   let timeRemaining = ROUND3_TIME;
   if (state.start_time) {
