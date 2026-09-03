@@ -10,10 +10,11 @@ export default function DinoRunner({
   hideBanner = false
 }) {
   const canvasRef = useRef(null);
+  const jumpFnRef = useRef(() => {});
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,7 +40,10 @@ export default function DinoRunner({
     let obstacles = [];
     let obstacleTimer = 0;
     let gameSpeed = 5;
-    let isRunning = true;
+    // The rover no longer starts running the instant this component
+    // mounts — physics/scoring stay paused until the player launches it.
+    let isRunning = false;
+    let crashed = false;
 
     // Static starfield + dust motes, generated once so they don't re-randomize every frame
     const stars = Array.from({ length: 40 }, () => ({
@@ -66,14 +70,25 @@ export default function DinoRunner({
     };
 
     const handleJump = () => {
-      if (rover.isGrounded && isRunning) {
+      if (!isRunning) {
+        if (crashed) {
+          // Rover crashed — restart the run immediately.
+          resetGame();
+        } else {
+          // First launch: player explicitly starts the run.
+          isRunning = true;
+          setStarted(true);
+        }
         rover.vy = rover.jumpPower;
         rover.isGrounded = false;
-      } else if (!isRunning) {
-        // Restart
-        resetGame();
+        return;
+      }
+      if (rover.isGrounded) {
+        rover.vy = rover.jumpPower;
+        rover.isGrounded = false;
       }
     };
+    jumpFnRef.current = handleJump;
 
     const handleKeyDown = (e) => {
       if (e.code === 'Space' || e.code === 'ArrowUp') {
@@ -93,8 +108,9 @@ export default function DinoRunner({
       rover.isGrounded = true;
       gameSpeed = 5;
       isRunning = true;
+      crashed = false;
       setGameOver(false);
-      setIsPlaying(true);
+      setStarted(true);
     };
 
     const loop = () => {
@@ -236,6 +252,7 @@ export default function DinoRunner({
           ) {
             // Crash
             isRunning = false;
+            crashed = true;
             setGameOver(true);
             setHighScore((prev) => Math.max(prev, Math.floor(currentScore / 5)));
           }
@@ -333,13 +350,27 @@ export default function DinoRunner({
         </div>
 
         {/* Canvas Runner */}
-        <div className="relative rounded-xl overflow-hidden border border-[#E2530A]/20 bg-black cursor-pointer shadow-inner">
+        <div
+          className="relative rounded-xl overflow-hidden border border-[#E2530A]/20 bg-black cursor-pointer shadow-inner"
+          onClick={() => jumpFnRef.current()}
+        >
           <canvas
             ref={canvasRef}
             width={720}
             height={240}
             className="w-full h-auto block"
           />
+
+          {!started && !gameOver && (
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center space-y-3">
+              <div className="text-amber-300 font-bold text-xl tracking-wider">
+                MARTIAN DINO RUNNER
+              </div>
+              <div className="text-xs text-orange-100/80 animate-pulse">
+                PRESS SPACE OR TAP SCREEN TO START
+              </div>
+            </div>
+          )}
 
           {gameOver && (
             <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center space-y-3">
