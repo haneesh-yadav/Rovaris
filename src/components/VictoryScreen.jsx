@@ -79,49 +79,8 @@ export default function VictoryScreen({ leaderboard = [], currentTeamId, onBackT
   const secondPlace = leaderboard[1];
   const thirdPlace = leaderboard[2];
 
-  const myIdx = currentTeamId != null ? leaderboard.findIndex((t) => t.id === currentTeamId) : -1;
-  const myTeam = myIdx >= 0 ? leaderboard[myIdx] : null;
-
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6 py-8 select-none">
-      {/* ========================================================
-          TOP BAR — scope toggle (left) + "my squadron" summary
-          pill (right), same pattern as the reference leaderboard.
-          ======================================================== */}
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div className="inline-flex items-center gap-1 bg-white rounded-full p-1 border border-black/5 shadow-sm">
-          <span className="px-4 py-1.5 rounded-full bg-[#302f27] text-white text-xs font-bold">
-            Final Results
-          </span>
-          <span className="px-4 py-1.5 rounded-full text-[#8a8a80] text-xs font-semibold">
-            {leaderboard.length} {leaderboard.length === 1 ? 'Team' : 'Teams'}
-          </span>
-        </div>
-
-        {myTeam && (
-          <div className="inline-flex items-center gap-2.5 bg-white rounded-full pl-2 pr-1.5 py-1.5 border border-black/5 shadow-sm">
-            <Avatar name={myTeam.name} size="w-7 h-7 text-[10px] ring-2" />
-            <div className="text-left leading-tight pr-1">
-              <div className="text-xs font-bold text-[#14140F] truncate max-w-[7rem]">{myTeam.name}</div>
-              <div className="text-[10px] font-semibold text-[#E2530A]">{myTeam.scores.total} PTS</div>
-            </div>
-            <span
-              className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-black shrink-0 ${
-                myIdx === 0
-                  ? 'bg-amber-400 text-black'
-                  : myIdx === 1
-                  ? 'bg-slate-300 text-black'
-                  : myIdx === 2
-                  ? 'bg-amber-700 text-white'
-                  : 'bg-[#302f27] text-white'
-              }`}
-            >
-              {myIdx + 1}
-            </span>
-          </div>
-        )}
-      </div>
-
       {/* ========================================================
           PODIUM — circular avatar, medal, name + PTS pill, then a
           flat cream block sized by rank (reference layout).
