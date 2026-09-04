@@ -12,5 +12,20 @@
 // ------------------------------------------------------------------
 
 module.exports = [
-  'Rovaris', // test team — remove once the real roster is in
+  'Rovaris',
+  'HAIL MARY',
+  'INTERSTELLAR',
+  'ORION',
+  'JADOO',
+  'PHOBOS',
+  'RED ODYSSEY',
+  'R2D2',
+  'ROVER? I HARDLY KNOW HER',
+  'ROGUE ROVERS',
+  'BAJRANGBALI BLASTERS',
+  'SPIRIT',
+  'ASTRYN',
+  'BROVER',
+  'POLARIS',
+  'JARVIS'
 ];
