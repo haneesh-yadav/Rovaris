@@ -74,6 +74,16 @@ async function broadcastAdminUpdate() {
   io.emit('leaderboard_update', leaderboard);
 }
 
+// Player-facing actions (moves, guesses, toggles, etc.) need to ack the
+// acting team fast — broadcastAdminUpdate() re-sweeps every team's full
+// state across all 3 rounds, which is too slow to make a player wait on
+// before their own move confirms. Fire it after the callback instead of
+// awaiting it inline, so a slow admin/leaderboard recompute never delays
+// the click that triggered it.
+function scheduleAdminUpdate() {
+  broadcastAdminUpdate().catch((err) => console.error('broadcastAdminUpdate error:', err));
+}
+
 async function broadcastLobbyUpdate() {
   const [teams, session] = await Promise.all([
     db.prepare('SELECT id, name, connected FROM teams ORDER BY created_at ASC').all(),
@@ -231,9 +241,9 @@ io.on('connection', (socket) => {
       const result = await round1.applyMove(teamId, buttonName);
       if (result.success) {
         io.to(teamId).emit('round1_update', result.state);
-        await broadcastAdminUpdate();
       }
       callback(result);
+      if (result.success) scheduleAdminUpdate();
     } catch (err) {
       callback({ success: false, error: err.message });
     }
@@ -246,9 +256,9 @@ io.on('connection', (socket) => {
       const result = await round1.submitRiddle(teamId, answer);
       if (result.success) {
         io.to(teamId).emit('round1_update', result.state);
-        await broadcastAdminUpdate();
       }
       callback(result);
+      if (result.success) scheduleAdminUpdate();
     } catch (err) {
       callback({ success: false, error: err.message });
     }
@@ -275,9 +285,9 @@ io.on('connection', (socket) => {
       const result = await round2.toggleSystem(teamId, sysId);
       if (result.success) {
         io.to(teamId).emit('round2_update', result.state);
-        await broadcastAdminUpdate();
       }
       callback(result);
+      if (result.success) scheduleAdminUpdate();
     } catch (err) {
       callback({ success: false, error: err.message });
     }
@@ -290,9 +300,9 @@ io.on('connection', (socket) => {
       const result = await round2.guessLetter(teamId, letter);
       if (result.success) {
         io.to(teamId).emit('round2_update', result.state);
-        await broadcastAdminUpdate();
       }
       callback(result);
+      if (result.success) scheduleAdminUpdate();
     } catch (err) {
       callback({ success: false, error: err.message });
     }
@@ -305,9 +315,9 @@ io.on('connection', (socket) => {
       const result = await round2.advanceDecision(teamId);
       if (result.success) {
         io.to(teamId).emit('round2_update', result.state);
-        await broadcastAdminUpdate();
       }
       callback(result);
+      if (result.success) scheduleAdminUpdate();
     } catch (err) {
       callback({ success: false, error: err.message });
     }
@@ -334,9 +344,9 @@ io.on('connection', (socket) => {
       const result = await round3.playAudio(teamId);
       if (result.success) {
         io.to(teamId).emit('round3_update', result.state);
-        await broadcastAdminUpdate();
       }
       callback(result);
+      if (result.success) scheduleAdminUpdate();
     } catch (err) {
       callback({ success: false, error: err.message });
     }
@@ -349,9 +359,9 @@ io.on('connection', (socket) => {
       const result = await round3.submitTransmission(teamId, words);
       if (result.success) {
         io.to(teamId).emit('round3_update', result.state);
-        await broadcastAdminUpdate();
       }
       callback(result);
+      if (result.success) scheduleAdminUpdate();
     } catch (err) {
       callback({ success: false, error: err.message });
     }
@@ -372,8 +382,8 @@ io.on('connection', (socket) => {
         await round3.startRound3ForTeam(teamId, now);
         io.to(teamId).emit('round3_update', await round3.getClientState(teamId));
       }
-      await broadcastAdminUpdate();
       if (callback) callback({ success: true });
+      scheduleAdminUpdate();
     } catch (err) {
       if (callback) callback({ success: false, error: err.message });
     }
