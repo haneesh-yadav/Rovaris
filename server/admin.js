@@ -104,6 +104,13 @@ async function getLeaderboard(telemetry) {
 }
 
 async function adjustTeamScore(teamId, roundNum, delta) {
+  // roundNum gets interpolated straight into a column name below (column
+  // names can't be bound params), so it must be checked against a fixed
+  // whitelist first rather than trusted as-is, even though this action is
+  // already admin-gated.
+  if (![1, 2, 3].includes(roundNum)) {
+    throw new Error(`Invalid round number: ${roundNum}`);
+  }
   const col = `round${roundNum}_score`;
   await db.prepare(`
     UPDATE scores
