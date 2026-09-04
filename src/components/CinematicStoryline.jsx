@@ -133,6 +133,15 @@ export default function CinematicStoryline({ type = 'intro', onComplete, isAdmin
     };
   }, [teamName, type]);
 
+  // Each storyline (intro/round1/round2/round3) has its own pair count.
+  // Without this, switching `type` mid-flow (e.g. intro's 5 sequences ->
+  // round1's 2 sequences) left currentPairIndex pointing past the new
+  // storyline's array, producing mismatched labels like "Sequence [5/2]"
+  // and breaking Next/Previous until a full refresh remounted the component.
+  useEffect(() => {
+    setCurrentPairIndex(0);
+  }, [type]);
+
   const pair = storyline.pairs[currentPairIndex] || storyline.pairs[0];
   const targetLine1 = pair[0] || '';
   const targetLine2 = pair[1] || '';
