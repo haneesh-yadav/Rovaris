@@ -49,7 +49,7 @@ const ICON_NAV_ITEMS = [
 
 const LOBBY_TABS = [
   { id: 'lobby', label: 'Lobby', icon: 'groups' },
-  { id: 'dino', label: 'Dino Game', icon: 'sports_esports' },
+  { id: 'dino', label: 'Robo Game', icon: 'sports_esports' },
 ];
 
 export default function Main() {

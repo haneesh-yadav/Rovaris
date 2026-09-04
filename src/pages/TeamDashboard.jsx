@@ -340,7 +340,7 @@ export default function TeamDashboard() {
             {r1State.completed ? (
               <DinoRunner
                 title="ROUND 1 OBJECTIVE COMPLETED!"
-                message="Your squadron successfully traversed the corrupted Martian maze and connected with the relay dish. Your round 1 score is locked. Enjoy the Martian Dino Runner while the other teams finish this round!"
+                message="Your squadron successfully traversed the corrupted Martian maze and connected with the relay dish. Your round 1 score is locked. Enjoy the Martian Robo Runner while the other teams finish this round!"
                 scoreText={null}
                 statusText="ROUND 1 OBJECTIVE COMPLETED • SCORE LOCKED UNTIL FINAL DEBRIEF"
               />
@@ -453,7 +453,7 @@ export default function TeamDashboard() {
             {r2State.completed ? (
               <DinoRunner
                 title="ROUND 2 OBJECTIVE COMPLETED!"
-                message="Your squadron successfully stabilized the rover's emergency power systems and survived the solar storm. Your Round 2 score is locked. Enjoy the Martian Dino Runner while the other teams finish this round!"
+                message="Your squadron successfully stabilized the rover's emergency power systems and survived the solar storm. Your Round 2 score is locked. Enjoy the Martian Robo Runner while the other teams finish this round!"
                 scoreText={null}
                 statusText="ROUND 2 OBJECTIVE COMPLETED • SCORE LOCKED UNTIL FINAL DEBRIEF"
               />
@@ -502,7 +502,7 @@ export default function TeamDashboard() {
             {r3State.completed || r3State.timeRemaining <= 0 ? (
               <DinoRunner
                 title="ROUND 3 OBJECTIVE COMPLETED!"
-                message="Your squadron successfully decoded the distress transmission and restored contact with the stranded astronaut. Your Round 3 score is locked. Enjoy the Martian Dino Runner while the other teams finish this round!"
+                message="Your squadron successfully decoded the distress transmission and restored contact with the stranded astronaut. Your Round 3 score is locked. Enjoy the Martian Robo Runner while the other teams finish this round!"
                 scoreText={null}
                 statusText="ROUND 3 OBJECTIVE COMPLETED • SCORE LOCKED UNTIL FINAL DEBRIEF"
               />

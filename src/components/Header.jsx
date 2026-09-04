@@ -10,7 +10,7 @@ import '../css/components/Header.css';
 const NAV_ITEMS = [
   { to: '/', label: 'Home' },
   { to: '/admin', label: 'Mission Admin' },
-  { to: '/dino', label: 'Dino Game' },
+  { to: '/dino', label: 'Robo Game' },
 ];
 
 /**
@@ -163,7 +163,7 @@ export default function Header({
           </div>
         )}
 
-        {/* Action button — right side of the header row, filled accent pill (e.g. "Dino Game") */}
+        {/* Action button — right side of the header row, filled accent pill (e.g. "Robo Game") */}
         {actionButton && !hasRoster && (
           <Link
             to={actionButton.to}

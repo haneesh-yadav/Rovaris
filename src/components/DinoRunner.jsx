@@ -319,7 +319,7 @@ export default function DinoRunner({
           {title || "ROUND OBJECTIVE COMPLETED!"}
         </h2>
         <p className="text-sm md:text-base text-orange-100/80 max-w-2xl mx-auto leading-relaxed">
-          {message || "Your squadron successfully completed this round. Your score is locked. Enjoy the Martian Dino Runner while the other teams finish this round!"}
+          {message || "Your squadron successfully completed this round. Your score is locked. Enjoy the Martian Robo Runner while the other teams finish this round!"}
         </p>
 
         {scoreText && (
@@ -335,7 +335,7 @@ export default function DinoRunner({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-amber-400" />
-            <span className="font-bold text-white tracking-tight">MARTIAN DINO RUNNER</span>
+            <span className="font-bold text-white tracking-tight">MARTIAN ROBO RUNNER</span>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/30 border border-white/10 text-orange-200/60 uppercase tracking-wider">Untracked Mini-Game</span>
           </div>
 
@@ -364,7 +364,7 @@ export default function DinoRunner({
           {!started && !gameOver && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center space-y-3">
               <div className="text-amber-300 font-bold text-xl tracking-wider">
-                MARTIAN DINO RUNNER
+                MARTIAN ROBO RUNNER
               </div>
               <div className="text-xs text-orange-100/80 animate-pulse">
                 PRESS SPACE OR TAP SCREEN TO START

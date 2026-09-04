@@ -18,7 +18,7 @@ export default function DinoGame() {
             </span>
           </div>
           <h1 className="font-rajdhani font-bold leading-[0.92] tracking-tight text-4xl sm:text-5xl text-[#14140F]">
-            MARTIAN DINO <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E2530A] to-[#B5391F]">RUNNER</span>
+            MARTIAN ROBO <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E2530A] to-[#B5391F]">RUNNER</span>
           </h1>
           <p className="text-sm text-[#4a4a44] leading-relaxed">
             An untracked mini-game — jump over craters and rocks while you wait for the next mission update.
